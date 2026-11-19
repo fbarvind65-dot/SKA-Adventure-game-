@@ -38,7 +38,7 @@ const materials={
  darkGlass:new THREE.MeshStandardMaterial({color:0x253d49,roughness:.18,metalness:.4}),
  bark:mat(0x57402f), leaf:mat(0x405d38), leaf2:mat(0x587247),
  white:mat(0xe5e1d6), black:mat(0x202326,.55), rubber:mat(0x17191a,.95),
- skin:new THREE.MeshStandardMaterial({color:0x9b6749,roughness:.78,metalness:0}), shirt:mat(0x354f61,.92), pants:mat(0x303b43,.9), shoe:mat(0x242629,.58)
+ skin:new THREE.MeshStandardMaterial({color:0x9b6749,roughness:.78,metalness:0}), shirt:mat(0x17191b,.96), pants:mat(0x252a30,.92), shoe:mat(0xe5e5df,.62)
 };
 
 function box(parent,w,h,d,material,x,y,z,cast=true){
@@ -154,8 +154,28 @@ const limbGeo=new THREE.CapsuleGeometry(.115,.48,5,10);
 function limb(parent,material,x,y,z){
  const m=new THREE.Mesh(limbGeo,material); m.position.set(x,y,z); m.castShadow=true; parent.add(m); return m;
 }
-const body= new THREE.Mesh(new THREE.CapsuleGeometry(.29,.62,6,12),shirt);
-body.position.y=1.28; body.castShadow=true; torso.add(body);
+const body= new THREE.Mesh(new THREE.CapsuleGeometry(.31,.64,8,16),shirt);
+body.position.y=1.28; body.castShadow=true; body.receiveShadow=true; torso.add(body);
+// Black hoodie details: hood, front pouch, seams and drawstrings.
+const hood=sphere(torso,.245,shirt,0,1.72,-.13,1.08,.92,.72);
+const hoodOpening=sphere(torso,.155,mat(0x090a0b),0,1.76,-.205,1,.9,.42);
+const pouch=box(torso,.39,.22,.075,mat(0x222426),0,1.12,.278);
+pouch.rotation.x=-.08;
+for(const side of [-1,1]){
+ const cord=cylinder(torso,.012,.012,.24,mat(0xbdbbb4),side*.065,1.55,.29,7);
+ cord.rotation.x=.12;
+ sphere(torso,.018,mat(0xbdbbb4),side*.065,1.42,.29,.8,1.2,.8);
+}
+const logoCanvas=document.createElement('canvas');
+logoCanvas.width=512; logoCanvas.height=256;
+const logoCtx=logoCanvas.getContext('2d');
+logoCtx.clearRect(0,0,512,256);
+logoCtx.fillStyle='#f1f0e9'; logoCtx.textAlign='center';
+logoCtx.font='900 112px Arial'; logoCtx.fillText('SKA',256,125);
+logoCtx.font='bold 34px Arial'; logoCtx.fillText('ADVENTURE',256,174);
+const logoTexture=new THREE.CanvasTexture(logoCanvas);
+const logo=new THREE.Mesh(new THREE.PlaneGeometry(.34,.17),new THREE.MeshBasicMaterial({map:logoTexture,transparent:true,side:THREE.DoubleSide,depthWrite:false}));
+logo.position.set(0,1.42,.304); torso.add(logo);
 const neck=cylinder(torso,.09,.1,.2,skin,0,1.79,0,12);
 const head=sphere(torso,.235,skin,0,2.03,0,1,1.13,.95);
 // Facial structure and features, facing the character's forward (+Z) direction.
@@ -175,6 +195,11 @@ const chin=sphere(torso,.105,skin,0,1.89,.105,.9,.48,.75);
 // Hair cap and separate side locks instead of a smooth featureless ball.
 const hair= new THREE.Mesh(new THREE.SphereGeometry(.24,24,16),hairMat);
 hair.position.set(0,2.145,-.015); hair.scale.set(1, .57, 1); torso.add(hair);
+// Layered swept-up hair locks for a less generic silhouette.
+for(let i=0;i<7;i++){
+ const lock=sphere(torso,.085,hairMat,(i-3)*.052,2.235+Math.sin(i*.7)*.035,.025,.72,1.45,.72);
+ lock.rotation.z=-.28-(i*.035);
+}
 for(const side of [-1,1]){
  sphere(torso,.09,hairMat,side*.19,2.08,.005,.65,1.1,.85);
 }
@@ -182,8 +207,11 @@ for(const side of [-1,1]){
 const pants=materials.pants;
 const leftLeg=new THREE.Group(); leftLeg.position.set(-.14,.92,0); torso.add(leftLeg);
 const rightLeg=new THREE.Group(); rightLeg.position.set(.14,.92,0); torso.add(rightLeg);
-limb(leftLeg,pants,0,-.34,0); box(leftLeg,.23,.13,.43,materials.shoe,0,-.67,.1);
-limb(rightLeg,pants,0,-.34,0); box(rightLeg,.23,.13,.43,materials.shoe,0,-.67,.1);
+limb(leftLeg,pants,0,-.34,0); box(leftLeg,.25,.16,.46,materials.shoe,0,-.67,.12);
+limb(rightLeg,pants,0,-.34,0); box(rightLeg,.25,.16,.46,materials.shoe,0,-.67,.12);
+for(const leg of [leftLeg,rightLeg]){
+ box(leg,.255,.045,.47,mat(0xb8b9b5),0,-.745,.13,false);
+}
 const leftArm=new THREE.Group(); leftArm.position.set(-.37,1.53,0); torso.add(leftArm);
 const rightArm=new THREE.Group(); rightArm.position.set(.37,1.53,0); torso.add(rightArm);
 limb(leftArm,shirt,0,-.27,0); limb(leftArm,skin,0,-.66,0);
