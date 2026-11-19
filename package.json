@@ -1,0 +1,16 @@
+{
+  "name": "ska-adventure",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "vite build"
+  },
+  "dependencies": {
+    "three": "latest"
+  },
+  "devDependencies": {
+    "vite": "latest"
+  }
+}
