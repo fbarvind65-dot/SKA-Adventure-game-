@@ -371,7 +371,8 @@ function animate(){
   characterMixer.update(dt);
  }
  if(moving){
-  const sprinting=runHeld||keys.shift;\n  const speed=sprinting?8.2:5.2;
+  const sprinting=runHeld||keys.shift;
+  const speed=sprinting?8.2:5.2;
   player.position.x+=x*speed*dt;
   player.position.z+=y*speed*dt;
   player.position.x=THREE.MathUtils.clamp(player.position.x,-95,95);
@@ -388,7 +389,8 @@ function animate(){
   rightLeg.rotation.x=THREE.MathUtils.damp(rightLeg.rotation.x,0,10,dt);
   leftArm.rotation.x=THREE.MathUtils.damp(leftArm.rotation.x,0,10,dt);
   rightArm.rotation.x=THREE.MathUtils.damp(rightArm.rotation.x,0,10,dt);
-  torso.position.y=THREE.MathUtils.damp(torso.position.y,0,10,dt);\n  torso.rotation.x=THREE.MathUtils.damp(torso.rotation.x,0,8,dt);
+  torso.position.y=THREE.MathUtils.damp(torso.position.y,0,10,dt);
+  torso.rotation.x=THREE.MathUtils.damp(torso.rotation.x,0,8,dt);
  }
  const horizontalDistance=Math.cos(cameraPitch)*cameraDistance;
  desiredCamera.set(
