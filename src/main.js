@@ -12,6 +12,7 @@ function sixtyFive(){ return 65; }
 const renderer = new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});
 renderer.setSize(innerWidth,innerHeight);
 renderer.setPixelRatio(Math.min(devicePixelRatio,1.75));
+renderer.domElement.style.touchAction='none';
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -215,13 +216,34 @@ hud.innerHTML='<strong style="font-size:17px;letter-spacing:1.4px">SKA ADVENTURE
 app.appendChild(hud);
 const hint=document.createElement('div');
 hint.style.cssText='position:fixed;right:14px;bottom:20px;z-index:4;padding:9px 12px;border-radius:9px;background:#15232bb8;color:#fff;font-size:12px;border:1px solid #ffffff35';
-hint.textContent='Move: joystick / WASD / arrow keys';
+hint.textContent='Move: joystick · Rotate 360°: drag screen · Zoom: scroll';
 app.appendChild(hint);
 
 const clock=new THREE.Clock();
 const desiredCamera=new THREE.Vector3();
 const lookTarget=new THREE.Vector3();
 let walkTime=0;
+
+// 360-degree camera: drag anywhere on the world view to orbit around the player.
+let cameraYaw=0, cameraPitch=0.22, cameraDistance=10.5;
+let cameraPointer=null, lastPointerX=0, lastPointerY=0;
+renderer.domElement.addEventListener('pointerdown',e=>{
+ cameraPointer=e.pointerId; lastPointerX=e.clientX; lastPointerY=e.clientY;
+ renderer.domElement.setPointerCapture(e.pointerId);
+});
+renderer.domElement.addEventListener('pointermove',e=>{
+ if(cameraPointer!==e.pointerId)return;
+ const dx=e.clientX-lastPointerX,dy=e.clientY-lastPointerY;
+ lastPointerX=e.clientX;lastPointerY=e.clientY;
+ cameraYaw-=dx*.008;
+ cameraPitch=THREE.MathUtils.clamp(cameraPitch+dy*.006,-.12,1.05);
+});
+function stopCameraDrag(e){if(cameraPointer===e.pointerId)cameraPointer=null}
+renderer.domElement.addEventListener('pointerup',stopCameraDrag);
+renderer.domElement.addEventListener('pointercancel',stopCameraDrag);
+renderer.domElement.addEventListener('wheel',e=>{
+ cameraDistance=THREE.MathUtils.clamp(cameraDistance+e.deltaY*.012,5.5,22);
+},{passive:true});
 function animate(){
  requestAnimationFrame(animate);
  const dt=Math.min(clock.getDelta(),.04);
@@ -249,7 +271,12 @@ function animate(){
   rightArm.rotation.x=THREE.MathUtils.damp(rightArm.rotation.x,0,10,dt);
   torso.position.y=THREE.MathUtils.damp(torso.position.y,0,10,dt);
  }
- desiredCamera.set(player.position.x,player.position.y+5.2,player.position.z+9.2);
+ const horizontalDistance=Math.cos(cameraPitch)*cameraDistance;
+ desiredCamera.set(
+  player.position.x+Math.sin(cameraYaw)*horizontalDistance,
+  player.position.y+2.2+Math.sin(cameraPitch)*cameraDistance,
+  player.position.z+Math.cos(cameraYaw)*horizontalDistance
+ );
  camera.position.lerp(desiredCamera,1-Math.exp(-4*dt));
  lookTarget.set(player.position.x,1.25,player.position.z-1.4);
  camera.lookAt(lookTarget);
