@@ -1,4 +1,6 @@
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import playerModelUrl from './Business_Female_01.glb?url';
 
 const app = document.querySelector('#app');
 document.body.style.cssText = 'margin:0;overflow:hidden;background:#9bb8c7;font-family:Arial,sans-serif';
@@ -226,6 +228,55 @@ for(const arm of [leftArm,rightArm]){
 }
 player.position.set(0,0,18);
 
+// Load the uploaded GLB character and use its embedded animations when available.
+let characterMixer = null;
+let characterActions = {};
+let activeCharacterAction = null;
+let characterAnimationState = '';
+const characterLoader = new GLTFLoader();
+characterLoader.load(playerModelUrl, (gltf) => {
+ const character = gltf.scene;
+ const bounds = new THREE.Box3().setFromObject(character);
+ const size = bounds.getSize(new THREE.Vector3());
+ const center = bounds.getCenter(new THREE.Vector3());
+ const targetHeight = 2.15;
+ const scale = targetHeight / Math.max(size.y, 0.001);
+ character.scale.setScalar(scale);
+ character.position.set(-center.x * scale, -bounds.min.y * scale, -center.z * scale);
+ character.traverse((object) => {
+  if (object.isMesh) {
+   object.castShadow = true;
+   object.receiveShadow = true;
+  }
+ });
+ player.add(character);
+ // Use the uploaded model instead of the procedural placeholder.
+ torso.visible = false;
+ if (gltf.animations && gltf.animations.length) {
+  characterMixer = new THREE.AnimationMixer(character);
+  const findClip = (pattern) => gltf.animations.find((clip) => pattern.test(clip.name));
+  const idleClip = findClip(/idle|stand|breath/i) || gltf.animations[0];
+  const walkClip = findClip(/walk|walking/i) || idleClip;
+  const runClip = findClip(/run|running|jog/i) || walkClip;
+  characterActions = {
+   idle: characterMixer.clipAction(idleClip),
+   walk: characterMixer.clipAction(walkClip),
+   run: characterMixer.clipAction(runClip)
+  };
+  setCharacterAnimation('idle');
+ }
+}, undefined, (error) => {
+ console.error('Could not load SKA Adventure GLB character:', error);
+});
+function setCharacterAnimation(state) {
+ if (!characterMixer || !characterActions[state] || characterAnimationState === state) return;
+ const nextAction = characterActions[state];
+ if (activeCharacterAction && activeCharacterAction !== nextAction) activeCharacterAction.fadeOut(0.18);
+ nextAction.reset().fadeIn(0.18).play();
+ activeCharacterAction = nextAction;
+ characterAnimationState = state;
+}
+
 // Parked vehicles along the road.
 function car(x,z,color){
  const g=new THREE.Group(); g.position.set(x,0,z); scene.add(g);
@@ -315,6 +366,10 @@ function animate(){
  let y=moveY+(keys.s||keys.arrowdown?1:0)-(keys.w||keys.arrowup?1:0);
  const length=Math.hypot(x,y); if(length>1){x/=length;y/=length}
  const moving=Math.hypot(x,y)>.08;
+ if (characterMixer) {
+  setCharacterAnimation(moving ? ((runHeld || keys.shift) ? 'run' : 'walk') : 'idle');
+  characterMixer.update(dt);
+ }
  if(moving){
   const sprinting=runHeld||keys.shift;\n  const speed=sprinting?8.2:5.2;
   player.position.x+=x*speed*dt;
