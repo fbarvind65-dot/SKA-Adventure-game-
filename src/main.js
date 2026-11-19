@@ -254,7 +254,7 @@ control.style.cssText='position:fixed;left:22px;bottom:22px;width:124px;height:1
 const knob=document.createElement('div');
 knob.style.cssText='position:absolute;width:52px;height:52px;left:34px;top:34px;border-radius:50%;background:#e8edf0cc;border:1px solid #fff';
 control.appendChild(knob); app.appendChild(control);
-let moveX=0,moveY=0,dragging=false;
+let moveX=0,moveY=0,dragging=false,runHeld=false;
 function joystick(e){
  const r=control.getBoundingClientRect(),dx=e.clientX-(r.left+62),dy=e.clientY-(r.top+62);
  const len=Math.hypot(dx,dy),scale=len>39?39/len:1,x=dx*scale,y=dy*scale;
@@ -264,6 +264,15 @@ control.addEventListener('pointerdown',e=>{dragging=true;control.setPointerCaptu
 control.addEventListener('pointermove',e=>{if(dragging)joystick(e)});
 function resetStick(){dragging=false;moveX=moveY=0;knob.style.left='34px';knob.style.top='34px'}
 control.addEventListener('pointerup',resetStick);control.addEventListener('pointercancel',resetStick);
+// Mobile sprint control.
+const runButton=document.createElement('button');
+runButton.type='button'; runButton.textContent='RUN';
+runButton.setAttribute('aria-label','Hold to run');
+runButton.style.cssText='position:fixed;right:24px;bottom:38px;z-index:6;width:76px;height:76px;border-radius:50%;border:2px solid #ffffffbb;background:#17252cbb;color:#fff;font-weight:800;letter-spacing:1px;font-size:14px;touch-action:none;box-shadow:0 4px 16px #0005';
+app.appendChild(runButton);
+runButton.addEventListener('pointerdown',e=>{e.preventDefault();runHeld=true;runButton.style.background='#286b42dd';runButton.setPointerCapture(e.pointerId)});
+function stopRun(){runHeld=false;runButton.style.background='#17252cbb'}
+runButton.addEventListener('pointerup',stopRun);runButton.addEventListener('pointercancel',stopRun);runButton.addEventListener('lostpointercapture',stopRun);
 
 const hud=document.createElement('div');
 hud.style.cssText='position:fixed;top:16px;left:16px;z-index:4;color:#fff;text-shadow:0 2px 5px #000;background:#15232bb8;border:1px solid #ffffff35;border-radius:10px;padding:10px 13px;font-size:13px;letter-spacing:.3px;backdrop-filter:blur(8px)';
@@ -271,7 +280,7 @@ hud.innerHTML='<strong style="font-size:17px;letter-spacing:1.4px">SKA ADVENTURE
 app.appendChild(hud);
 const hint=document.createElement('div');
 hint.style.cssText='position:fixed;right:14px;bottom:20px;z-index:4;padding:9px 12px;border-radius:9px;background:#15232bb8;color:#fff;font-size:12px;border:1px solid #ffffff35';
-hint.textContent='Move: joystick · Rotate 360°: drag screen · Zoom: scroll';
+hint.textContent='Move: joystick · Hold RUN to sprint · Drag: 360° camera';
 app.appendChild(hint);
 
 const clock=new THREE.Clock();
@@ -307,7 +316,7 @@ function animate(){
  const length=Math.hypot(x,y); if(length>1){x/=length;y/=length}
  const moving=Math.hypot(x,y)>.08;
  if(moving){
-  const speed=5.2;
+  const sprinting=runHeld||keys.shift;\n  const speed=sprinting?8.2:5.2;
   player.position.x+=x*speed*dt;
   player.position.z+=y*speed*dt;
   player.position.x=THREE.MathUtils.clamp(player.position.x,-95,95);
@@ -324,7 +333,7 @@ function animate(){
   rightLeg.rotation.x=THREE.MathUtils.damp(rightLeg.rotation.x,0,10,dt);
   leftArm.rotation.x=THREE.MathUtils.damp(leftArm.rotation.x,0,10,dt);
   rightArm.rotation.x=THREE.MathUtils.damp(rightArm.rotation.x,0,10,dt);
-  torso.position.y=THREE.MathUtils.damp(torso.position.y,0,10,dt);
+  torso.position.y=THREE.MathUtils.damp(torso.position.y,0,10,dt);\n  torso.rotation.x=THREE.MathUtils.damp(torso.rotation.x,0,8,dt);
  }
  const horizontalDistance=Math.cos(cameraPitch)*cameraDistance;
  desiredCamera.set(
