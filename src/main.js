@@ -38,7 +38,7 @@ const materials={
  darkGlass:new THREE.MeshStandardMaterial({color:0x253d49,roughness:.18,metalness:.4}),
  bark:mat(0x57402f), leaf:mat(0x405d38), leaf2:mat(0x587247),
  white:mat(0xe5e1d6), black:mat(0x202326,.55), rubber:mat(0x17191a,.95),
- skin:mat(0x9b6749), shirt:mat(0x354f61), pants:mat(0x303b43), shoe:mat(0x242629)
+ skin:new THREE.MeshStandardMaterial({color:0x9b6749,roughness:.78,metalness:0}), shirt:mat(0x354f61,.92), pants:mat(0x303b43,.9), shoe:mat(0x242629,.58)
 };
 
 function box(parent,w,h,d,material,x,y,z,cast=true){
@@ -158,8 +158,27 @@ const body= new THREE.Mesh(new THREE.CapsuleGeometry(.29,.62,6,12),shirt);
 body.position.y=1.28; body.castShadow=true; torso.add(body);
 const neck=cylinder(torso,.09,.1,.2,skin,0,1.79,0,12);
 const head=sphere(torso,.235,skin,0,2.03,0,1,1.13,.95);
-const hair= new THREE.Mesh(new THREE.SphereGeometry(.24,16,12),mat(0x28221e));
-hair.position.set(0,2.13,-.015); hair.scale.set(1, .58, 1); torso.add(hair);
+// Facial structure and features, facing the character's forward (+Z) direction.
+const eyeWhite=new THREE.MeshStandardMaterial({color:0xe9e4dc,roughness:.42});
+const iris=mat(0x382b22,.35), hairMat=mat(0x211c19,.86), browMat=mat(0x30251f,.9);
+for(const side of [-1,1]){
+ sphere(torso,.045,skin,side*.235,2.02,0,.72,1.15,.82); // ears
+ sphere(torso,.032,eyeWhite,side*.088,2.075,.199,1,.8,.48);
+ sphere(torso,.017,iris,side*.088,2.075,.224,1,1,.55);
+ sphere(torso,.009,materials.black,side*.088,2.075,.233,1,1,.5);
+ const brow=sphere(torso,.047,browMat,side*.088,2.132,.194,1,.22,.42);
+ brow.rotation.z=side*.1;
+}
+const nose=sphere(torso,.052,skin,0,2.005,.225,.62,.8,.78);
+const mouth=sphere(torso,.043,mat(0x684238,.8),0,1.94,.207,.8,.18,.25);
+const chin=sphere(torso,.105,skin,0,1.89,.105,.9,.48,.75);
+// Hair cap and separate side locks instead of a smooth featureless ball.
+const hair= new THREE.Mesh(new THREE.SphereGeometry(.24,24,16),hairMat);
+hair.position.set(0,2.145,-.015); hair.scale.set(1, .57, 1); torso.add(hair);
+for(const side of [-1,1]){
+ sphere(torso,.09,hairMat,side*.19,2.08,.005,.65,1.1,.85);
+}
+
 const pants=materials.pants;
 const leftLeg=new THREE.Group(); leftLeg.position.set(-.14,.92,0); torso.add(leftLeg);
 const rightLeg=new THREE.Group(); rightLeg.position.set(.14,.92,0); torso.add(rightLeg);
@@ -169,6 +188,14 @@ const leftArm=new THREE.Group(); leftArm.position.set(-.37,1.53,0); torso.add(le
 const rightArm=new THREE.Group(); rightArm.position.set(.37,1.53,0); torso.add(rightArm);
 limb(leftArm,shirt,0,-.27,0); limb(leftArm,skin,0,-.66,0);
 limb(rightArm,shirt,0,-.27,0); limb(rightArm,skin,0,-.66,0);
+for(const arm of [leftArm,rightArm]){
+ sphere(arm,.105,skin,0,-.83,.005,1,.85,.8);
+ for(let finger=0;finger<4;finger++){
+  const fx=(finger-1.5)*.045;
+  const digit=limb(arm,skin,fx,-.91,.025);
+  digit.scale.set(.25,.48,.25);
+ }
+}
 player.position.set(0,0,18);
 
 // Parked vehicles along the road.
