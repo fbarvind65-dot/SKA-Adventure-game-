@@ -541,41 +541,84 @@ hint.textContent='Move: joystick · Hold RUN to sprint · Drag: 360° camera';
 app.appendChild(hint);
 
 
-/* Main game lobby: the world is loaded behind this menu; Play enters the live world. */
+/* Full-screen SKA lobby with a central 3D avatar and full game-home menus. */
 let gameStarted=false;
-hudRoot.style.display='none';
-hud.style.display='none';
-hint.style.display='none';
+hudRoot.style.display='none'; hud.style.display='none'; hint.style.display='none';
+const lobbyVehicleOriginal=vehicles[0].position.clone();
+vehicles[0].position.set(-4.1,0,17.2);
+const lobbyStageBase=new THREE.Mesh(new THREE.CylinderGeometry(3.15,3.35,.16,56),new THREE.MeshStandardMaterial({color:0x26343d,metalness:.48,roughness:.42}));
+lobbyStageBase.position.set(0,-.055,18); lobbyStageBase.receiveShadow=true; scene.add(lobbyStageBase);
+const lobbyStageRing=new THREE.Mesh(new THREE.TorusGeometry(3.12,.045,10,64),new THREE.MeshStandardMaterial({color:0xd9ad4b,metalness:.65,roughness:.28,emissive:0x55380a,emissiveIntensity:.25}));
+lobbyStageRing.rotation.x=Math.PI/2; lobbyStageRing.position.set(0,.035,18); scene.add(lobbyStageRing);
+
+const lobbyCss=document.createElement('style');
+lobbyCss.textContent=[
+'#ska-lobby{position:fixed!important;inset:0!important;width:100vw!important;height:100dvh!important;z-index:2147483647!important;display:block!important;overflow:hidden!important;pointer-events:auto!important;color:#f7f8fa;font-family:Arial,Helvetica,sans-serif;background:linear-gradient(90deg,rgba(5,13,20,.72),rgba(7,17,24,.04) 38%,rgba(7,17,24,.08) 64%,rgba(5,13,20,.72))}',
+'#ska-lobby *{box-sizing:border-box} #ska-lobby button{font:inherit;color:inherit;cursor:pointer;touch-action:manipulation}',
+'#ska-lobby .l-top{position:absolute;left:1.4vw;right:1.4vw;top:1.5vh;display:flex;align-items:flex-start;justify-content:space-between;gap:10px}',
+'#ska-lobby .l-profile{display:flex;align-items:center;gap:10px;min-width:205px;padding:7px 12px 7px 7px;border:1px solid #ffffff55;border-radius:10px;background:linear-gradient(100deg,#17232de8,#17232d88);box-shadow:0 4px 18px #0005;text-align:left}',
+'#ska-lobby .l-avatar{width:52px;height:52px;flex:none;border:2px solid #c9ad67;border-radius:9px;display:grid;place-items:center;background:radial-gradient(circle at 35% 25%,#9eb8c5,#405568 60%,#1c2934);font-size:20px;font-weight:900}',
+'#ska-lobby .l-name{display:block;font-size:clamp(12px,1.55vw,18px);font-weight:900;letter-spacing:.5px} #ska-lobby .l-level{display:block;font-size:11px;color:#e5c979;margin-top:4px}',
+'#ska-lobby .l-xp{display:block;height:5px;width:clamp(100px,16vw,190px);border-radius:6px;background:#ffffff33;margin-top:6px;overflow:hidden} #ska-lobby .l-xp i{display:block;width:24%;height:100%;background:#e8c25a}',
+'#ska-lobby .l-brand{position:absolute;left:50%;top:5px;transform:translateX(-50%);text-align:center;text-shadow:0 3px 9px #000} #ska-lobby .l-brand b{font-size:clamp(15px,2.2vw,25px);letter-spacing:3px} #ska-lobby .l-brand small{display:block;margin-top:4px;font-size:10px;letter-spacing:2px;color:#d9e2e8}',
+'#ska-lobby .l-wallet{display:flex;align-items:center;gap:7px;padding:8px;border:1px solid #ffffff45;border-radius:10px;background:#14212bcc} #ska-lobby .l-currency{white-space:nowrap;padding:7px 9px;border-radius:6px;background:#ffffff12;font-weight:800;font-size:clamp(11px,1.25vw,15px)}',
+'#ska-lobby .l-add,#ska-lobby .l-settings{border:1px solid #ffffff66;background:#263947dd;border-radius:8px;min-width:35px;height:35px;font-size:22px;font-weight:800}',
+'#ska-lobby .l-left{position:absolute;left:1.4vw;top:18%;width:clamp(112px,15vw,190px);display:flex;flex-direction:column;gap:8px} #ska-lobby .l-section-title{font-size:11px;font-weight:900;letter-spacing:2px;color:#f0d27b;text-shadow:0 2px 5px #000}',
+'#ska-lobby .l-friend{display:flex;align-items:center;gap:8px;padding:7px;border:1px solid #ffffff38;border-radius:8px;background:#14212dcc;font-size:11px;text-align:left} #ska-lobby .l-friend i{width:30px;height:30px;display:grid;place-items:center;border-radius:7px;background:#42586a;font-style:normal;font-weight:900} #ska-lobby .l-friend span{display:block;color:#b8c7ce;font-size:10px;margin-top:3px}',
+'#ska-lobby .l-rail{display:flex;flex-direction:column;gap:6px;margin-top:3px} #ska-lobby .l-rail button{width:42px;height:38px;border:1px solid #ffffff45;border-radius:7px;background:#172732dd;font-size:18px}',
+'#ska-lobby .l-right{position:absolute;right:1.4vw;top:17%;width:clamp(135px,17vw,225px);display:flex;flex-direction:column;gap:8px} #ska-lobby .l-event{display:flex;align-items:center;gap:9px;min-height:58px;padding:8px;border:1px solid #ffffff4d;border-radius:9px;background:linear-gradient(100deg,#192a35e8,#203747a8);text-align:left;box-shadow:0 4px 14px #0004}',
+'#ska-lobby .l-event-ico{width:37px;height:37px;flex:none;border-radius:8px;display:grid;place-items:center;background:linear-gradient(145deg,#9c7836,#3d5260);font-size:20px} #ska-lobby .l-event b{display:block;font-size:clamp(10px,1.2vw,13px);letter-spacing:.3px} #ska-lobby .l-event small{display:block;margin-top:4px;font-size:10px;color:#c7d4dc}',
+'#ska-lobby .l-bottom-left{position:absolute;left:1.4vw;bottom:3.2vh;width:clamp(210px,22vw,300px)} #ska-lobby .l-mode{width:100%;padding:10px 12px;border:1px solid #ffffff66;border-radius:8px 8px 0 0;background:#172833e8;text-align:left} #ska-lobby .l-mode b{display:block;font-size:13px;letter-spacing:.5px} #ska-lobby .l-mode small{display:block;margin-top:5px;color:#c5d1d8;font-size:11px}',
+'#ska-lobby .l-start{width:100%;height:clamp(58px,10vh,82px);border:2px solid #f7d778!important;border-radius:0 0 8px 8px;background:linear-gradient(110deg,#e8b83c,#ffe17b)!important;color:#141b20!important;font-size:clamp(27px,4vw,43px)!important;font-weight:1000!important;letter-spacing:3px;text-shadow:0 1px #fff8;box-shadow:0 5px 20px #0007}',
+'#ska-lobby .l-bottom-nav{position:absolute;left:27%;right:1.5vw;bottom:2.4vh;display:flex;align-items:center;justify-content:flex-end;gap:clamp(8px,2vw,28px);padding:9px 12px;border-top:1px solid #ffffff55;background:linear-gradient(90deg,transparent,#101b25b5)} #ska-lobby .l-bottom-nav button{border:0;background:transparent;text-shadow:0 2px 5px #000;font-size:clamp(10px,1.3vw,14px);font-weight:900;letter-spacing:.7px;padding:9px 3px}',
+'#ska-lobby .l-status{position:absolute;left:1.5vw;bottom:.7vh;font-size:10px;color:#c7d6de;text-shadow:0 2px 5px #000}',
+'#ska-lobby .l-modal{position:absolute;inset:0;display:none;align-items:center;justify-content:center;padding:18px;background:#02080db8;backdrop-filter:blur(5px)} #ska-lobby .l-modal.open{display:flex} #ska-lobby .l-modal-card{width:min(440px,92vw);max-height:80vh;overflow:auto;padding:21px;border:1px solid #ffffff66;border-radius:16px;background:linear-gradient(145deg,#1a2c38,#0e1922);box-shadow:0 16px 50px #000b}',
+'#ska-lobby .l-modal-head{display:flex;justify-content:space-between;align-items:center;font-size:18px;font-weight:900;letter-spacing:1px} #ska-lobby .l-close{width:34px;height:34px;border:1px solid #ffffff55;border-radius:8px;background:#ffffff16;font-size:19px} #ska-lobby .l-modal-body{margin-top:14px;color:#d2dce2;font-size:13px;line-height:1.6} #ska-lobby .l-modal-row{padding:10px;margin-top:8px;border:1px solid #ffffff25;border-radius:8px;background:#ffffff0b}',
+'@media (orientation:portrait){#ska-lobby .l-top{left:2vw;right:2vw;top:1vh}#ska-lobby .l-brand{display:none}#ska-lobby .l-profile{min-width:0;padding:5px}#ska-lobby .l-avatar{width:40px;height:40px}#ska-lobby .l-xp{width:90px}#ska-lobby .l-wallet{gap:3px;padding:4px}#ska-lobby .l-currency{padding:6px;font-size:10px}#ska-lobby .l-add,#ska-lobby .l-settings{min-width:30px;height:30px}#ska-lobby .l-left{top:13%;left:2vw;width:110px}#ska-lobby .l-right{top:13%;right:2vw;width:125px}#ska-lobby .l-event{min-height:48px;padding:5px;gap:5px}#ska-lobby .l-event-ico{width:29px;height:29px}#ska-lobby .l-bottom-left{left:2vw;bottom:8vh;width:190px}#ska-lobby .l-start{height:58px;font-size:29px!important}#ska-lobby .l-bottom-nav{left:2vw;right:2vw;bottom:1vh;gap:10px;justify-content:center;flex-wrap:wrap;padding:4px}#ska-lobby .l-bottom-nav button{font-size:10px;padding:6px 2px}#ska-lobby .l-status{display:none}}'
+].join('\n');
+document.head.appendChild(lobbyCss);
+
 const lobbyScreen=document.createElement('section');
 lobbyScreen.id='ska-lobby';
-lobbyScreen.style.cssText='position:fixed;inset:0;z-index:2147483646;display:flex;align-items:center;justify-content:center;padding:22px;box-sizing:border-box;background:linear-gradient(115deg,rgba(5,13,20,.82),rgba(5,13,20,.35) 55%,rgba(5,13,20,.78));font-family:Arial,sans-serif;color:#fff';
-lobbyScreen.innerHTML=`
- <div style="width:min(720px,94vw);padding:clamp(20px,4vw,38px);box-sizing:border-box;border:1px solid #ffffff55;border-radius:24px;background:linear-gradient(145deg,#101c27ee,#182d3ae8);box-shadow:0 18px 60px #0009;backdrop-filter:blur(12px)">
-  <div style="font-size:clamp(11px,2vw,14px);letter-spacing:4px;color:#b8d2df;font-weight:700">OPEN WORLD ADVENTURE</div>
-  <div style="font-size:clamp(30px,6vw,54px);font-weight:900;letter-spacing:2px;margin-top:8px;text-shadow:0 4px 16px #0008">SKA ADVENTURE</div>
-  <div style="font-size:clamp(13px,2.4vw,17px);color:#d3e0e6;margin-top:8px">CITY DISTRICT</div>
-  <div style="height:1px;background:#ffffff35;margin:24px 0"></div>
-  <div style="font-size:12px;letter-spacing:2px;color:#a9c4d1;font-weight:700">GAME MODE</div>
-  <div style="display:flex;align-items:center;gap:12px;margin-top:10px;padding:14px;border:1px solid #ffffff55;border-radius:14px;background:#ffffff12">
-   <div style="width:42px;height:42px;border-radius:12px;display:grid;place-items:center;background:#31536a;font-size:22px">◎</div>
-   <div><div style="font-size:16px;font-weight:700">Solo Adventure</div><div style="font-size:12px;color:#c1d1d9;margin-top:4px">Explore the city · Free roam</div></div>
-   <div style="margin-left:auto;font-size:11px;color:#a9d7b7;border:1px solid #6ca98788;border-radius:20px;padding:5px 9px">AVAILABLE</div>
-  </div>
-  <button id="ska-lobby-play" type="button" style="width:100%;height:58px;margin-top:22px;border:0;border-radius:14px;background:linear-gradient(90deg,#d9a83f,#f2d17b);color:#17212a;font-size:17px;font-weight:900;letter-spacing:1.5px;box-shadow:0 8px 24px #0005;touch-action:manipulation">ENTER WORLD  ▶</button>
-  <div style="text-align:center;margin-top:14px;color:#a9bbc5;font-size:11px;letter-spacing:.5px">Single-player free roam · More modes can be added later</div>
- </div>`;
-lobbyScreen.style.zIndex='2147483647';
-lobbyScreen.style.pointerEvents='auto';
-lobbyScreen.style.visibility='visible';
-lobbyScreen.style.opacity='1';
-lobbyScreen.style.display='flex';
+lobbyScreen.innerHTML='<header class="l-top"><button class="l-profile" data-lobby-panel="profile"><span class="l-avatar">SP</span><span><span class="l-name">SKA PLAYER</span><span class="l-level">LEVEL 01 · ROOKIE</span><span class="l-xp"><i></i></span></span></button><div class="l-brand"><b>SKA ADVENTURE</b><small>CITY DISTRICT · FREE ROAM</small></div><div class="l-wallet"><span class="l-currency">✦ 0</span><span class="l-currency">◆ 0</span><button class="l-add" data-lobby-panel="credits">+</button><button class="l-settings" data-lobby-panel="settings">⚙</button></div></header><aside class="l-left"><div class="l-section-title">FRIENDS <span style="color:#fff">0/30</span></div><button class="l-friend" data-lobby-panel="friends"><i>+</i><div>ADD FRIENDS<span>Single-player mode</span></div></button><button class="l-friend" data-lobby-panel="team"><i>◎</i><div>TEAM<span>No team connected</span></div></button><div class="l-rail"><button data-lobby-panel="missions" aria-label="Missions">⚡</button><button data-lobby-panel="rewards" aria-label="Rewards">🏅</button><button data-lobby-panel="mail" aria-label="Messages">✉</button></div></aside><aside class="l-right"><div class="l-section-title">CITY ACTIVITIES</div><button class="l-event" data-lobby-panel="events"><span class="l-event-ico">🎁</span><span><b>DAILY REWARDS</b><small>View your rewards</small></span></button><button class="l-event" data-lobby-panel="missions"><span class="l-event-ico">✦</span><span><b>CITY MISSIONS</b><small>Explore the district</small></span></button><button class="l-event" data-lobby-panel="workshop"><span class="l-event-ico">⚒</span><span><b>WORKSHOP</b><small>Character showcase</small></span></button></aside><section class="l-bottom-left"><button class="l-mode" data-lobby-panel="mode"><b>SOLO ADVENTURE　⌄</b><small>City District · Free Roam</small></button><button class="l-start" id="ska-lobby-play">START</button></section><nav class="l-bottom-nav"><button data-lobby-panel="report">REPORT</button><button data-lobby-panel="theme">THEME</button><button data-lobby-panel="workshop">WORKSHOP</button><button data-lobby-panel="inventory">INVENTORY</button><button data-lobby-panel="settings">⚙</button></nav><div class="l-status">● SINGLE PLAYER　　CITY DISTRICT　　SKA ADVENTURE</div><div class="l-modal" id="ska-lobby-modal"><div class="l-modal-card"><div class="l-modal-head"><span id="ska-lobby-modal-title">MENU</span><button class="l-close" id="ska-lobby-close">×</button></div><div class="l-modal-body" id="ska-lobby-modal-body"></div></div></div>';
 document.body.appendChild(lobbyScreen);
+
+const lobbyPanels={
+ profile:["PLAYER PROFILE",'<div class="l-modal-row"><b>SKA PLAYER</b><br>Level 01 · Rookie<br>Local single-player profile</div>'],
+ friends:["FRIENDS",'<div class="l-modal-row">No online friends are connected. This build currently supports single-player free roam only.</div>'],
+ team:["TEAM",'<div class="l-modal-row">Team matchmaking is not connected yet. Start Solo Adventure to explore the city.</div>'],
+ credits:["CREDITS",'<div class="l-modal-row">Credits: 0<br>No paid currency or in-game purchases are enabled.</div>'],
+ settings:["SETTINGS",'<div class="l-modal-row">Display: Full-screen game view<br>Use the fullscreen icon in-game to enter landscape mode. Phone rotation may also require Auto-rotate.</div>'],
+ events:["CITY ACTIVITIES",'<div class="l-modal-row"><b>City Explorer</b><br>Explore the streets, buildings and parked vehicles in free roam.</div><div class="l-modal-row"><b>Solo Adventure</b><br>Single-player city exploration is available now.</div>'],
+ missions:["CITY MISSIONS",'<div class="l-modal-row">Explore the city district.</div><div class="l-modal-row">Find a parked vehicle and try the driving controls.</div>'],
+ rewards:["REWARDS",'<div class="l-modal-row">Daily reward system is not connected yet.</div>'],
+ mail:["MESSAGES",'<div class="l-modal-row">No new messages.</div>'],
+ workshop:["WORKSHOP",'<div class="l-modal-row">Current character: SKA player model.<br>Character customization is not connected yet.</div>'],
+ inventory:["INVENTORY",'<div class="l-modal-row">Your inventory is empty. Items and equipment collection are not implemented yet.</div>'],
+ report:["REPORT",'<div class="l-modal-row">Report menu is not connected to an online support service.</div>'],
+ theme:["THEME",'<div class="l-modal-row">SKA standard theme is active.</div>'],
+ mode:["GAME MODE",'<div class="l-modal-row"><b>SOLO ADVENTURE · AVAILABLE</b><br>Explore the city district by yourself.</div>']
+};
+const lobbyModal=lobbyScreen.querySelector('#ska-lobby-modal');
+lobbyScreen.addEventListener('click',e=>{
+ const trigger=e.target.closest('[data-lobby-panel]');
+ if(trigger){
+  const item=lobbyPanels[trigger.dataset.lobbyPanel]||["MENU","<div class='l-modal-row'>This menu is not available.</div>"];
+  lobbyScreen.querySelector('#ska-lobby-modal-title').textContent=item[0];
+  lobbyScreen.querySelector('#ska-lobby-modal-body').innerHTML=item[1];
+  lobbyModal.classList.add('open');
+ }
+});
+lobbyScreen.querySelector('#ska-lobby-close').addEventListener('click',()=>lobbyModal.classList.remove('open'));
+lobbyModal.addEventListener('click',e=>{if(e.target===lobbyModal)lobbyModal.classList.remove('open')});
 lobbyScreen.querySelector('#ska-lobby-play').addEventListener('click',()=>{
  requestLandscape();
  gameStarted=true;
  lobbyScreen.remove();
- hudRoot.style.display='block';
- hud.style.display='block';
+ lobbyStageBase.visible=false; lobbyStageRing.visible=false;
+ vehicles[0].position.copy(lobbyVehicleOriginal);
+ player.position.set(0,0,18);
+ hudRoot.style.display='block'; hud.style.display='block';
  cameraYaw=0;cameraPitch=.28;cameraDistance=8.5;
  updateHudLayout();
 });
@@ -586,7 +629,7 @@ const lookTarget=new THREE.Vector3();
 let walkTime=0;
 
 // 360-degree camera: drag anywhere on the world view to orbit around the player.
-let cameraYaw=0, cameraPitch=0.28, cameraDistance=8.5;
+let cameraYaw=0, cameraPitch=0.16, cameraDistance=6.6;
 let cameraPointer=null, lastPointerX=0, lastPointerY=0;
 renderer.domElement.addEventListener('pointerdown',e=>{
  cameraPointer=e.pointerId; lastPointerX=e.clientX; lastPointerY=e.clientY;
