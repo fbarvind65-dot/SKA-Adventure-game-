@@ -23,6 +23,41 @@ renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.05;
 app.appendChild(renderer.domElement);
 
+// Require landscape play on phones. Android browsers generally need fullscreen
+// plus a user tap before the screen orientation can be locked.
+const orientationStyle=document.createElement('style');
+orientationStyle.textContent=`
+ @media (orientation:landscape) and (max-height:600px) {
+  #ska-landscape-gate { display:none !important; }
+ }
+ @media (orientation:portrait) {
+  #ska-landscape-gate { display:flex !important; }
+ }
+`;
+document.head.appendChild(orientationStyle);
+const landscapeGate=document.createElement('div');
+landscapeGate.id='ska-landscape-gate';
+landscapeGate.style.cssText='position:fixed;inset:0;z-index:1000;display:none;align-items:center;justify-content:center;flex-direction:column;gap:18px;padding:28px;background:rgba(7,13,19,.96);color:white;text-align:center;font-family:Arial,sans-serif;box-sizing:border-box';
+landscapeGate.innerHTML='<div style="font-size:54px;line-height:1">↻</div><div style="font-size:24px;font-weight:800">PLAY IN LANDSCAPE</div><div style="max-width:300px;font-size:15px;line-height:1.5;color:#d5e0e7">Phone ko horizontal (aada) ghumao, phir PLAY button dabao.</div><button id="ska-landscape-play" type="button" style="padding:14px 30px;border:0;border-radius:12px;background:#19a45b;color:white;font-size:17px;font-weight:800">PLAY</button>';
+app.appendChild(landscapeGate);
+const landscapePlay=landscapeGate.querySelector('#ska-landscape-play');
+landscapePlay.addEventListener('click',async()=>{
+ try{
+  if(!document.fullscreenElement && app.requestFullscreen) await app.requestFullscreen();
+  if(screen.orientation && screen.orientation.lock) await screen.orientation.lock('landscape');
+ }catch(error){
+  console.warn('Landscape lock unavailable; rotate the phone manually:',error);
+ }
+});
+function updateLandscapeGate(){
+ const portrait=matchMedia('(orientation: portrait)').matches;
+ landscapeGate.style.display=portrait?'flex':'none';
+}
+addEventListener('orientationchange',updateLandscapeGate);
+addEventListener('resize',updateLandscapeGate);
+updateLandscapeGate();
+
+
 // Mobile-friendly fullscreen button. Fullscreen starts only after a user tap.
 const fullButton=document.createElement('button');
 fullButton.type='button';
