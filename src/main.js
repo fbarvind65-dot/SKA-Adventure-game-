@@ -380,6 +380,59 @@ runButton.type='button'; runButton.textContent='RUN';
 runButton.setAttribute('aria-label','Hold to run');
 runButton.style.cssText='position:fixed;right:max(22px,env(safe-area-inset-right));bottom:max(38px,env(safe-area-inset-bottom));z-index:6;width:clamp(78px,15vw,94px);height:clamp(78px,15vw,94px);border-radius:50%;border:2px solid #ffffffdd;background:#17252cdd;color:#fff;font-weight:800;letter-spacing:1px;font-size:16px;touch-action:none;box-shadow:0 4px 16px #0006';
 app.appendChild(runButton);
+app.appendChild(runButton);
+
+// Context-aware mobile action buttons. Controls appear only when their action is available.
+function makeActionButton(label, right, top, color='#17252cdd'){
+ const b=document.createElement('button');
+ b.type='button'; b.textContent=label;
+ b.style.cssText=`position:fixed;right:${right};top:${top};z-index:9;min-width:58px;min-height:48px;padding:9px 12px;border:1.5px solid #ffffffbb;border-radius:13px;background:${color};color:#fff;font:800 12px Arial,sans-serif;letter-spacing:.4px;box-shadow:0 3px 12px #0005;touch-action:manipulation;display:none`;
+ b.addEventListener('pointerdown',e=>e.stopPropagation());
+ app.appendChild(b);
+ return b;
+}
+const jumpButton=makeActionButton('JUMP','max(22px,env(safe-area-inset-right))','calc(50% + 42px)');
+const viewButton=makeActionButton('FPP','max(22px,env(safe-area-inset-right))','calc(50% - 18px)');
+const mapButton=makeActionButton('MAP','max(22px,env(safe-area-inset-right))','calc(50% - 78px)');
+const vehicleButton=makeActionButton('GET IN','50%','calc(50% + 35px)','#1c6846dd');
+vehicleButton.style.right='50%'; vehicleButton.style.transform='translateX(50%)';
+const exitVehicleButton=makeActionButton('EXIT','50%','calc(50% + 35px)','#7a3b2ddd');
+exitVehicleButton.style.right='50%'; exitVehicleButton.style.transform='translateX(50%)';
+
+let jumpVelocity=0, jumpActive=false, isDriving=false, activeVehicle=null;
+let firstPerson=false, mapOpen=false;
+const mapPanel=document.createElement('div');
+mapPanel.style.cssText='position:fixed;right:14px;top:68px;z-index:8;width:150px;height:150px;border:2px solid #ffffffaa;border-radius:12px;background:#17252cdd;color:#fff;display:none;overflow:hidden;pointer-events:none';
+mapPanel.innerHTML='<div style="padding:6px 8px;font:700 11px Arial">CITY MAP</div><div style="position:absolute;left:50%;top:50%;width:5px;height:5px;border-radius:50%;background:#4cff91;box-shadow:0 0 0 5px #4cff9144"></div><div style="position:absolute;left:50%;top:0;bottom:0;width:2px;background:#aab6bc88"></div><div style="position:absolute;top:50%;left:0;right:0;height:2px;background:#aab6bc88"></div>';
+app.appendChild(mapPanel);
+function toast(message){
+ let t=document.getElementById('ska-action-toast');
+ if(!t){t=document.createElement('div');t.id='ska-action-toast';t.style.cssText='position:fixed;left:50%;top:18%;transform:translateX(-50%);z-index:15;padding:9px 13px;border-radius:10px;background:#15232beF;color:white;font:700 13px Arial,sans-serif;pointer-events:none';app.appendChild(t)}
+ t.textContent=message;
+}
+jumpButton.addEventListener('click',()=>{
+ if(!jumpActive&&!isDriving){jumpVelocity=6.2;jumpActive=true;}
+});
+viewButton.addEventListener('click',()=>{
+ firstPerson=!firstPerson;
+ cameraDistance=firstPerson?0.25:8.5;
+ viewButton.textContent=firstPerson?'TPP':'FPP';
+});
+mapButton.addEventListener('click',()=>{
+ mapOpen=!mapOpen; mapPanel.style.display=mapOpen?'block':'none';
+});
+vehicleButton.addEventListener('click',()=>{
+ if(!nearbyVehicle||isDriving)return;
+ activeVehicle=nearbyVehicle; isDriving=true; player.visible=false;
+ player.position.copy(activeVehicle.position);
+ toast('Driving · Use joystick to move · EXIT to leave');
+});
+exitVehicleButton.addEventListener('click',()=>{
+ if(!isDriving||!activeVehicle)return;
+ player.position.set(activeVehicle.position.x+2.2,0,activeVehicle.position.z);
+ player.visible=true; isDriving=false; activeVehicle=null;
+ toast('You left the vehicle');
+});
 runButton.addEventListener('pointerdown',e=>{e.preventDefault();runHeld=true;runButton.style.background='#286b42dd';runButton.setPointerCapture(e.pointerId)});
 function stopRun(){runHeld=false;runButton.style.background='#17252cbb'}
 runButton.addEventListener('pointerup',stopRun);runButton.addEventListener('pointercancel',stopRun);runButton.addEventListener('lostpointercapture',stopRun);
@@ -425,12 +478,39 @@ function animate(){
  let y=moveY+(keys.s||keys.arrowdown?1:0)-(keys.w||keys.arrowup?1:0);
  const length=Math.hypot(x,y); if(length>1){x/=length;y/=length}
  const moving=Math.hypot(x,y)>.08;
+
+// Detect nearby parked cars so GET IN appears only when useful.
+ let nearbyVehicle=null;
+ if(!isDriving){
+  let nearest=5.2;
+  for(const vehicle of vehicles){
+   const distance=Math.hypot(player.position.x-vehicle.position.x,player.position.z-vehicle.position.z);
+   if(distance<nearest){nearest=distance;nearbyVehicle=vehicle;}
+  }
+ }
+ vehicleButton.style.display=nearbyVehicle&&!isDriving?'block':'none';
+ exitVehicleButton.style.display=isDriving?'block':'none';
+ jumpButton.style.display=isDriving?'none':'block';
+ viewButton.style.display='block'; mapButton.style.display='block';
+ if(jumpActive&&!isDriving){
+  player.position.y+=jumpVelocity*dt;
+  jumpVelocity-=15*dt;
+  if(player.position.y<=0){player.position.y=0;jumpVelocity=0;jumpActive=false;}
+ }
  if (characterMixer) {
   setCharacterAnimation(moving ? ((runHeld || keys.shift) ? 'run' : 'walk') : 'idle');
   characterMixer.update(dt);
  }
  if(moving){
   const sprinting=runHeld||keys.shift;
+  if(isDriving&&activeVehicle){
+   const driveSpeed=sprinting?13:8;
+   const driveX=(x*Math.cos(cameraYaw))+(y*Math.sin(cameraYaw));
+   const driveZ=-(x*Math.sin(cameraYaw))-(y*Math.cos(cameraYaw));
+   activeVehicle.position.x=THREE.MathUtils.clamp(activeVehicle.position.x+driveX*driveSpeed*dt,-95,95);
+   activeVehicle.position.z=THREE.MathUtils.clamp(activeVehicle.position.z+driveZ*driveSpeed*dt,-245,245);
+   player.position.copy(activeVehicle.position);
+  }else{
   const speed=sprinting?8.2:5.2;
   // Keep the player outside parked vehicles instead of allowing the model to pass through them.
   // Translate joystick input relative to the camera: UP always moves away
@@ -456,6 +536,7 @@ function animate(){
   if(!blockedX) player.position.x=nextX;
   if(!blockedZ) player.position.z=nextZ;
   player.rotation.y=Math.atan2(worldX,worldZ);
+  }
   walkTime+=dt*10;
   leftLeg.rotation.x=Math.sin(walkTime)*.58;
   rightLeg.rotation.x=-Math.sin(walkTime)*.58;
@@ -477,7 +558,7 @@ function animate(){
   player.position.z+Math.cos(cameraYaw)*horizontalDistance
  );
  camera.position.lerp(desiredCamera,1-Math.exp(-4*dt));
- lookTarget.set(player.position.x,1.25,player.position.z-1.4);
+ lookTarget.set(player.position.x,firstPerson?1.55:1.25,player.position.z-1.4);
  camera.lookAt(lookTarget);
  renderer.render(scene,camera);
 }
