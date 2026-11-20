@@ -367,16 +367,25 @@ function resetStick(){dragging=false;moveX=moveY=0;knob.style.left='calc(50% - 2
 control.addEventListener('pointerup',resetStick);control.addEventListener('pointercancel',resetStick);
 // Mobile sprint control.
 const runButton=document.createElement('button');
-runButton.type='button'; runButton.textContent='RUN';
+runButton.type='button'; runButton.innerHTML='<svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="15.5" cy="4.5" r="2"/><path d="m13 8-3 4 4 2 2 6M10 12l-4 2-2 5M13 8l4 2 3 4M8 7l3 1"/></svg>';
 runButton.setAttribute('aria-label','Hold to run');
-runButton.style.cssText='position:fixed;right:max(22px,env(safe-area-inset-right));bottom:max(38px,env(safe-area-inset-bottom));z-index:6;width:clamp(78px,15vw,94px);height:clamp(78px,15vw,94px);border-radius:50%;border:2px solid #ffffffdd;background:#17252cdd;color:#fff;font-weight:800;letter-spacing:1px;font-size:16px;touch-action:none;box-shadow:0 4px 16px #0006';
+runButton.style.cssText='position:fixed;right:max(22px,env(safe-area-inset-right));bottom:max(38px,env(safe-area-inset-bottom));z-index:10000;width:clamp(64px,13vw,82px);height:clamp(64px,13vw,82px);display:flex;align-items:center;justify-content:center;border-radius:50%;border:2px solid #ffffffdd;background:#17252cdd;color:#fff;touch-action:none;box-shadow:0 4px 16px #0006';
 app.appendChild(runButton);
 
 // Context-aware mobile action buttons. Controls appear only when their action is available.
+const actionIcons={
+ JUMP:'<svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20V4M5 11l7-7 7 7"/></svg>',
+ FPP:'<svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>',
+ MAP:'<svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/></svg>',
+ 'GET IN':'<svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 13 2-6h14l2 6v6h-3v-2H6v2H3zM5 13h14M7 10h.01M17 10h.01"/></svg>',
+ EXIT:'<svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3h6v18h-6M10 17l5-5-5-5M15 12H3"/></svg>'
+};
 function makeActionButton(label, right, top, color='#17252cdd'){
  const b=document.createElement('button');
- b.type='button'; b.textContent=label;
- b.style.cssText=`position:fixed;right:${right};top:${top};z-index:10000;min-width:64px;min-height:54px;padding:10px 14px;border:2px solid #ffffffdd;border-radius:14px;background:${color};color:#fff;font:900 13px Arial,sans-serif;letter-spacing:.5px;box-shadow:0 4px 14px #0009;touch-action:manipulation;display:block;visibility:visible;opacity:1;pointer-events:auto`;
+ b.type='button'; b.innerHTML=actionIcons[label]||'';
+ b.setAttribute('aria-label',label);
+ b.title=label;
+ b.style.cssText=`position:fixed;right:${right};top:${top};z-index:10000;width:58px;height:58px;min-width:58px;min-height:58px;padding:0;display:flex;align-items:center;justify-content:center;border:2px solid #ffffffdd;border-radius:50%;background:${color};color:#fff;box-shadow:0 4px 14px #0009;touch-action:manipulation;visibility:visible;opacity:1;pointer-events:auto`;
  b.addEventListener('pointerdown',e=>e.stopPropagation());
  document.body.appendChild(b);
  return b;
@@ -409,7 +418,7 @@ jumpButton.addEventListener('click',()=>{
 viewButton.addEventListener('click',()=>{
  firstPerson=!firstPerson;
  cameraDistance=firstPerson?0.25:8.5;
- viewButton.textContent=firstPerson?'TPP':'FPP';
+ viewButton.setAttribute('aria-label',firstPerson?'Third-person view':'First-person view');
 });
 mapButton.addEventListener('click',()=>{
  mapOpen=!mapOpen; mapPanel.style.display=mapOpen?'block':'none';
