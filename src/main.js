@@ -373,13 +373,14 @@ control.addEventListener('pointerup',resetStick);control.addEventListener('point
 const runButton=document.createElement('button');
 runButton.type='button'; runButton.innerHTML='<svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="15.5" cy="4.5" r="2"/><path d="m13 8-3 4 4 2 2 6M10 12l-4 2-2 5M13 8l4 2 3 4M8 7l3 1"/></svg>';
 runButton.setAttribute('aria-label','Hold to run');
-runButton.style.cssText='position:fixed;left:calc(max(4vw,env(safe-area-inset-left)) + clamp(118px,20vh,150px) - 34px);right:auto;bottom:calc(max(5vh,env(safe-area-inset-bottom)) + clamp(118px,20vh,150px) + 12px);z-index:10000;width:66px;height:66px;display:flex;align-items:center;justify-content:center;border-radius:50%;border:2px solid #ffffffdd;background:#17252cdd;color:#fff;touch-action:none;box-shadow:0 4px 16px #0006';
+runButton.style.cssText='position:fixed;left:calc(max(4vw,env(safe-area-inset-left)) + clamp(118px,20vh,150px) - 34px);right:auto;bottom:calc(max(5vh,env(safe-area-inset-bottom)) + clamp(118px,20vh,150px) + 12px);z-index:10000;width:66px;height:66px;display:flex;align-items:center;justify-content:center;border-radius:50%;border:2px solid #ffffffdd;background:#17252cdd;color:#fff;touch-action:none;box-shadow:0 4px 16px #0006;pointer-events:auto';
 hudRoot.appendChild(runButton);
 
 // Context-aware mobile action buttons. Controls appear only when their action is available.
 const actionIcons={
  JUMP:'<svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20V4M5 11l7-7 7 7"/></svg>',
  FPP:'<svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>',
+ RESET:'<svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 2.64-6.36L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></svg>',
  MAP:'<svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/></svg>',
  'GET IN':'<svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 13 2-6h14l2 6v6h-3v-2H6v2H3zM5 13h14M7 10h.01M17 10h.01"/></svg>',
  EXIT:'<svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3h6v18h-6M10 17l5-5-5-5M15 12H3"/></svg>'
@@ -400,6 +401,8 @@ const viewButton=makeActionButton('FPP','max(22px,env(safe-area-inset-right))','
 viewButton.style.bottom='calc(max(7vh,env(safe-area-inset-bottom)) + clamp(56px,10vh,68px) + 14px)';
 const mapButton=makeActionButton('MAP','max(22px,env(safe-area-inset-right))','auto');
 mapButton.style.bottom='calc(max(7vh,env(safe-area-inset-bottom)) + (clamp(56px,10vh,68px) + 14px)*2)';
+const resetButton=makeActionButton('RESET','max(22px,env(safe-area-inset-right))','auto');
+resetButton.style.bottom='calc(max(7vh,env(safe-area-inset-bottom)) + (clamp(56px,10vh,68px) + 14px)*3)';
 const vehicleButton=makeActionButton('GET IN','50%','calc(50% + 35px)','#1c6846dd');
 vehicleButton.style.right='50%'; vehicleButton.style.transform='translateX(50%)';
 const exitVehicleButton=makeActionButton('EXIT','50%','calc(50% + 35px)','#7a3b2ddd');
@@ -426,6 +429,11 @@ viewButton.addEventListener('click',()=>{
 });
 mapButton.addEventListener('click',()=>{
  mapOpen=!mapOpen; mapPanel.style.display=mapOpen?'block':'none';
+});
+resetButton.addEventListener('click',()=>{
+ cameraYaw=0;cameraPitch=.28;cameraDistance=8.5;firstPerson=false;
+ viewButton.setAttribute('aria-label','First-person view');
+ toast('Camera reset');
 });
 vehicleButton.addEventListener('click',()=>{
  if(!nearbyVehicle||isDriving)return;
