@@ -49,8 +49,10 @@ app.appendChild(fullButton);
 fullButton.addEventListener('click',async()=>{
  try{
   if(!document.fullscreenElement && app.requestFullscreen) await app.requestFullscreen();
-  else if(document.fullscreenElement && document.exitFullscreen) await document.exitFullscreen();
- }catch(error){ console.warn('Fullscreen is not available in this browser:',error); }
+  if(screen.orientation && screen.orientation.lock) await screen.orientation.lock('landscape');
+ }catch(error){
+  console.warn('Fullscreen or landscape lock is not available in this browser:',error);
+ }
 });
 
 
@@ -431,8 +433,12 @@ function animate(){
   const sprinting=runHeld||keys.shift;
   const speed=sprinting?8.2:5.2;
   // Keep the player outside parked vehicles instead of allowing the model to pass through them.
-  const nextX=THREE.MathUtils.clamp(player.position.x+x*speed*dt,-95,95);
-  const nextZ=THREE.MathUtils.clamp(player.position.z+y*speed*dt,-245,245);
+  // Translate joystick input relative to the camera: UP always moves away
+  // from the camera's view direction, DOWN moves toward it.
+  const worldX=(x*Math.cos(cameraYaw))-(y*Math.sin(cameraYaw));
+  const worldZ=-(x*Math.sin(cameraYaw))+(y*Math.cos(cameraYaw));
+  const nextX=THREE.MathUtils.clamp(player.position.x+worldX*speed*dt,-95,95);
+  const nextZ=THREE.MathUtils.clamp(player.position.z+worldZ*speed*dt,-245,245);
   const playerRadius=.62;
   let blockedX=false,blockedZ=false;
   for(const vehicle of vehicles){
@@ -447,7 +453,7 @@ function animate(){
   }
   if(!blockedX) player.position.x=nextX;
   if(!blockedZ) player.position.z=nextZ;
-  player.rotation.y=Math.atan2(x,y);
+  player.rotation.y=Math.atan2(worldX,worldZ);
   walkTime+=dt*10;
   leftLeg.rotation.x=Math.sin(walkTime)*.58;
   rightLeg.rotation.x=-Math.sin(walkTime)*.58;
