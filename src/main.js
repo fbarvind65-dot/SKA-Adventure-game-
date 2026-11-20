@@ -508,7 +508,7 @@ function animate(){
   if(isDriving&&activeVehicle){
    const driveSpeed=sprinting?13:8;
    const driveX=(x*Math.cos(cameraYaw))+(y*Math.sin(cameraYaw));
-   const driveZ=-(x*Math.sin(cameraYaw))-(y*Math.cos(cameraYaw));
+   const driveZ=-(x*Math.sin(cameraYaw))+(y*Math.cos(cameraYaw));
    activeVehicle.position.x=THREE.MathUtils.clamp(activeVehicle.position.x+driveX*driveSpeed*dt,-95,95);
    activeVehicle.position.z=THREE.MathUtils.clamp(activeVehicle.position.z+driveZ*driveSpeed*dt,-245,245);
    player.position.copy(activeVehicle.position);
@@ -520,7 +520,7 @@ function animate(){
   // Camera-relative controls: joystick up (negative y) always moves
   // away from the camera; joystick down always moves toward the camera.
   const worldX=(x*Math.cos(cameraYaw))+(y*Math.sin(cameraYaw));
-  const worldZ=-(x*Math.sin(cameraYaw))-(y*Math.cos(cameraYaw));
+  const worldZ=-(x*Math.sin(cameraYaw))+(y*Math.cos(cameraYaw));
   const nextX=THREE.MathUtils.clamp(player.position.x+worldX*speed*dt,-95,95);
   const nextZ=THREE.MathUtils.clamp(player.position.z+worldZ*speed*dt,-245,245);
   const playerRadius=.62;
