@@ -4,8 +4,8 @@ import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import playerModelUrl from './Business_Female_01.glb?url';
 
 const app = document.querySelector('#app');
-document.body.style.cssText = 'margin:0;overflow:hidden;background:#9bb8c7;font-family:Arial,sans-serif';
-app.style.cssText = 'position:fixed;inset:0;overflow:hidden';
+document.body.style.cssText = 'margin:0;overflow:hidden;background:#9bb8c7;font-family:Arial,sans-serif;overscroll-behavior:none;touch-action:none';
+app.style.cssText = 'position:fixed;inset:0;width:100%;height:100dvh;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none';
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x9eb8c8);
 scene.fog = new THREE.FogExp2(0x9eb8c8, 0.0028);
@@ -14,7 +14,7 @@ const camera = new THREE.PerspectiveCamera( sixtyFive(), innerWidth / innerHeigh
 function sixtyFive(){ return 65; }
 const renderer = new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});
 renderer.setSize(innerWidth,innerHeight);
-renderer.setPixelRatio(Math.min(devicePixelRatio,1.75));
+renderer.setPixelRatio(Math.min(devicePixelRatio,1.35));
 renderer.domElement.style.touchAction='none';
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -22,6 +22,21 @@ renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.05;
 app.appendChild(renderer.domElement);
+
+// Mobile-friendly fullscreen button. Fullscreen starts only after a user tap.
+const fullButton=document.createElement('button');
+fullButton.type='button';
+fullButton.textContent='⛶';
+fullButton.setAttribute('aria-label','Enter fullscreen');
+fullButton.style.cssText='position:fixed;right:max(14px,env(safe-area-inset-right));top:max(14px,env(safe-area-inset-top));z-index:8;width:42px;height:42px;border:1px solid #ffffff88;border-radius:12px;background:#15232bd9;color:#fff;font-size:25px;line-height:1;touch-action:manipulation';
+app.appendChild(fullButton);
+fullButton.addEventListener('click',async()=>{
+ try{
+  if(!document.fullscreenElement && app.requestFullscreen) await app.requestFullscreen();
+  else if(document.fullscreenElement && document.exitFullscreen) await document.exitFullscreen();
+ }catch(error){ console.warn('Fullscreen is not available in this browser:',error); }
+});
+
 
 scene.add(new THREE.HemisphereLight(0xdceeff,0x65715b,1.65));
 const sun = new THREE.DirectionalLight(0xffe5c2,3.0);
@@ -326,36 +341,36 @@ const keys={};
 addEventListener('keydown',e=>{keys[e.key.toLowerCase()]=true; if(['arrowup','arrowdown','arrowleft','arrowright',' '].includes(e.key.toLowerCase()))e.preventDefault();});
 addEventListener('keyup',e=>keys[e.key.toLowerCase()]=false);
 const control=document.createElement('div');
-control.style.cssText='position:fixed;left:22px;bottom:22px;width:124px;height:124px;border:2px solid #ffffff99;border-radius:50%;background:#17252c55;z-index:5;touch-action:none;backdrop-filter:blur(4px)';
+control.style.cssText='position:fixed;left:max(18px,env(safe-area-inset-left));bottom:max(24px,env(safe-area-inset-bottom));width:clamp(124px,22vw,150px);height:clamp(124px,22vw,150px);border:2px solid #ffffffaa;border-radius:50%;background:#17252c66;z-index:5;touch-action:none;backdrop-filter:blur(5px)';
 const knob=document.createElement('div');
-knob.style.cssText='position:absolute;width:52px;height:52px;left:34px;top:34px;border-radius:50%;background:#e8edf0cc;border:1px solid #fff';
+knob.style.cssText='position:absolute;width:54px;height:54px;left:calc(50% - 27px);top:calc(50% - 27px);border-radius:50%;background:#e8edf0dd;border:2px solid #fff;box-shadow:0 2px 8px #0005';
 control.appendChild(knob); app.appendChild(control);
 let moveX=0,moveY=0,dragging=false,runHeld=false;
 function joystick(e){
- const r=control.getBoundingClientRect(),dx=e.clientX-(r.left+62),dy=e.clientY-(r.top+62);
- const len=Math.hypot(dx,dy),scale=len>39?39/len:1,x=dx*scale,y=dy*scale;
- knob.style.left=(36+x)+'px';knob.style.top=(36+y)+'px';moveX=x/39;moveY=y/39;
+ const r=control.getBoundingClientRect(),radius=r.width/2,limit=radius-29,dx=e.clientX-(r.left+radius),dy=e.clientY-(r.top+radius);
+ const len=Math.hypot(dx,dy),scale=len>limit?limit/len:1,x=dx*scale,y=dy*scale;
+ knob.style.left=`calc(50% - 27px + ${x}px)`;knob.style.top=`calc(50% - 27px + ${y}px)`;moveX=x/limit;moveY=y/limit;
 }
 control.addEventListener('pointerdown',e=>{dragging=true;control.setPointerCapture(e.pointerId);joystick(e)});
 control.addEventListener('pointermove',e=>{if(dragging)joystick(e)});
-function resetStick(){dragging=false;moveX=moveY=0;knob.style.left='34px';knob.style.top='34px'}
+function resetStick(){dragging=false;moveX=moveY=0;knob.style.left='calc(50% - 27px)';knob.style.top='calc(50% - 27px)'}
 control.addEventListener('pointerup',resetStick);control.addEventListener('pointercancel',resetStick);
 // Mobile sprint control.
 const runButton=document.createElement('button');
 runButton.type='button'; runButton.textContent='RUN';
 runButton.setAttribute('aria-label','Hold to run');
-runButton.style.cssText='position:fixed;right:24px;bottom:38px;z-index:6;width:76px;height:76px;border-radius:50%;border:2px solid #ffffffbb;background:#17252cbb;color:#fff;font-weight:800;letter-spacing:1px;font-size:14px;touch-action:none;box-shadow:0 4px 16px #0005';
+runButton.style.cssText='position:fixed;right:max(22px,env(safe-area-inset-right));bottom:max(38px,env(safe-area-inset-bottom));z-index:6;width:clamp(78px,15vw,94px);height:clamp(78px,15vw,94px);border-radius:50%;border:2px solid #ffffffdd;background:#17252cdd;color:#fff;font-weight:800;letter-spacing:1px;font-size:16px;touch-action:none;box-shadow:0 4px 16px #0006';
 app.appendChild(runButton);
 runButton.addEventListener('pointerdown',e=>{e.preventDefault();runHeld=true;runButton.style.background='#286b42dd';runButton.setPointerCapture(e.pointerId)});
 function stopRun(){runHeld=false;runButton.style.background='#17252cbb'}
 runButton.addEventListener('pointerup',stopRun);runButton.addEventListener('pointercancel',stopRun);runButton.addEventListener('lostpointercapture',stopRun);
 
 const hud=document.createElement('div');
-hud.style.cssText='position:fixed;top:16px;left:16px;z-index:4;color:#fff;text-shadow:0 2px 5px #000;background:#15232bb8;border:1px solid #ffffff35;border-radius:10px;padding:10px 13px;font-size:13px;letter-spacing:.3px;backdrop-filter:blur(8px)';
+hud.style.cssText='position:fixed;top:max(14px,env(safe-area-inset-top));left:max(14px,env(safe-area-inset-left));z-index:4;color:#fff;text-shadow:0 2px 5px #000;background:#15232bd9;border:1px solid #ffffff45;border-radius:12px;padding:10px 13px;font-size:clamp(12px,2.5vw,14px);letter-spacing:.3px;backdrop-filter:blur(8px);pointer-events:none';
 hud.innerHTML='<strong style="font-size:17px;letter-spacing:1.4px">SKA ADVENTURE</strong><div style="margin-top:5px;color:#d6e2e7">OPEN WORLD · CITY DISTRICT</div>';
 app.appendChild(hud);
 const hint=document.createElement('div');
-hint.style.cssText='position:fixed;right:14px;bottom:20px;z-index:4;padding:9px 12px;border-radius:9px;background:#15232bb8;color:#fff;font-size:12px;border:1px solid #ffffff35';
+hint.style.cssText='position:fixed;left:50%;transform:translateX(-50%);bottom:max(12px,env(safe-area-inset-bottom));z-index:4;padding:8px 11px;border-radius:9px;background:#15232bd9;color:#fff;font-size:clamp(10px,2.5vw,12px);border:1px solid #ffffff45;white-space:nowrap;pointer-events:none';
 hint.textContent='Move: joystick · Hold RUN to sprint · Drag: 360° camera';
 app.appendChild(hint);
 
