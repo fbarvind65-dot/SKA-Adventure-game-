@@ -40,9 +40,9 @@ app.addEventListener('pointerdown',requestLandscape,{once:true});
 // Mobile-friendly fullscreen button. Fullscreen starts only after a user tap.
 const fullButton=document.createElement('button');
 fullButton.type='button';
-fullButton.textContent='⛶';
+fullButton.innerHTML='<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H3v5M16 3h5v5M21 16v5h-5M3 16v5h5"/></svg>';
 fullButton.setAttribute('aria-label','Enter fullscreen');
-fullButton.style.cssText='position:fixed;right:max(14px,env(safe-area-inset-right));top:max(14px,env(safe-area-inset-top));z-index:8;width:42px;height:42px;border:1px solid #ffffff88;border-radius:12px;background:#15232bd9;color:#fff;font-size:25px;line-height:1;touch-action:manipulation';
+fullButton.style.cssText='position:fixed;right:max(18px,env(safe-area-inset-right));top:max(14px,env(safe-area-inset-top));z-index:10001;width:52px;height:52px;display:flex;align-items:center;justify-content:center;border:2px solid #ffffffbb;border-radius:16px;background:#15232bd9;color:#fff;touch-action:manipulation';
 app.appendChild(fullButton);
 fullButton.addEventListener('click',requestLandscape);
 
@@ -351,7 +351,7 @@ const keys={};
 addEventListener('keydown',e=>{keys[e.key.toLowerCase()]=true; if(['arrowup','arrowdown','arrowleft','arrowright',' '].includes(e.key.toLowerCase()))e.preventDefault();});
 addEventListener('keyup',e=>keys[e.key.toLowerCase()]=false);
 const control=document.createElement('div');
-control.style.cssText='position:fixed;left:max(18px,env(safe-area-inset-left));bottom:max(24px,env(safe-area-inset-bottom));width:clamp(124px,22vw,150px);height:clamp(124px,22vw,150px);border:2px solid #ffffffaa;border-radius:50%;background:#17252c66;z-index:5;touch-action:none;backdrop-filter:blur(5px)';
+control.style.cssText='position:fixed;left:max(4vw,env(safe-area-inset-left));bottom:max(5vh,env(safe-area-inset-bottom));width:clamp(118px,20vh,150px);height:clamp(118px,20vh,150px);border:2px solid #ffffffaa;border-radius:50%;background:#17252c66;z-index:10000;touch-action:none;backdrop-filter:blur(5px)';
 const knob=document.createElement('div');
 knob.style.cssText='position:absolute;width:54px;height:54px;left:calc(50% - 27px);top:calc(50% - 27px);border-radius:50%;background:#e8edf0dd;border:2px solid #fff;box-shadow:0 2px 8px #0005';
 control.appendChild(knob); app.appendChild(control);
@@ -369,7 +369,7 @@ control.addEventListener('pointerup',resetStick);control.addEventListener('point
 const runButton=document.createElement('button');
 runButton.type='button'; runButton.innerHTML='<svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="15.5" cy="4.5" r="2"/><path d="m13 8-3 4 4 2 2 6M10 12l-4 2-2 5M13 8l4 2 3 4M8 7l3 1"/></svg>';
 runButton.setAttribute('aria-label','Hold to run');
-runButton.style.cssText='position:fixed;right:max(22px,env(safe-area-inset-right));bottom:max(38px,env(safe-area-inset-bottom));z-index:10000;width:clamp(64px,13vw,82px);height:clamp(64px,13vw,82px);display:flex;align-items:center;justify-content:center;border-radius:50%;border:2px solid #ffffffdd;background:#17252cdd;color:#fff;touch-action:none;box-shadow:0 4px 16px #0006';
+runButton.style.cssText='position:fixed;left:calc(max(4vw,env(safe-area-inset-left)) + clamp(118px,20vh,150px) - 34px);right:auto;bottom:calc(max(5vh,env(safe-area-inset-bottom)) + clamp(118px,20vh,150px) + 12px);z-index:10000;width:66px;height:66px;display:flex;align-items:center;justify-content:center;border-radius:50%;border:2px solid #ffffffdd;background:#17252cdd;color:#fff;touch-action:none;box-shadow:0 4px 16px #0006';
 app.appendChild(runButton);
 
 // Context-aware mobile action buttons. Controls appear only when their action is available.
@@ -385,17 +385,17 @@ function makeActionButton(label, right, top, color='#17252cdd'){
  b.type='button'; b.innerHTML=actionIcons[label]||'';
  b.setAttribute('aria-label',label);
  b.title=label;
- b.style.cssText=`position:fixed;right:${right};top:${top};z-index:10000;width:58px;height:58px;min-width:58px;min-height:58px;padding:0;display:flex;align-items:center;justify-content:center;border:2px solid #ffffffdd;border-radius:50%;background:${color};color:#fff;box-shadow:0 4px 14px #0009;touch-action:manipulation;visibility:visible;opacity:1;pointer-events:auto`;
+ b.style.cssText=`position:fixed;right:${right};top:${top};z-index:10000;width:clamp(56px,10vh,68px);height:clamp(56px,10vh,68px);min-width:56px;min-height:56px;padding:0;display:flex;align-items:center;justify-content:center;border:2px solid #ffffffdd;border-radius:50%;background:${color};color:#fff;box-shadow:0 4px 14px #0009;touch-action:manipulation;visibility:visible;opacity:1;pointer-events:auto`;
  b.addEventListener('pointerdown',e=>e.stopPropagation());
  document.body.appendChild(b);
  return b;
 }
 const jumpButton=makeActionButton('JUMP','max(22px,env(safe-area-inset-right))','auto');
-jumpButton.style.bottom='max(118px,calc(env(safe-area-inset-bottom) + 105px))';
+jumpButton.style.bottom='max(7vh,calc(env(safe-area-inset-bottom) + 12px))';
 const viewButton=makeActionButton('FPP','max(22px,env(safe-area-inset-right))','auto');
-viewButton.style.bottom='max(178px,calc(env(safe-area-inset-bottom) + 165px))';
+viewButton.style.bottom='calc(max(7vh,env(safe-area-inset-bottom)) + clamp(56px,10vh,68px) + 14px)';
 const mapButton=makeActionButton('MAP','max(22px,env(safe-area-inset-right))','auto');
-mapButton.style.bottom='max(238px,calc(env(safe-area-inset-bottom) + 225px))';
+mapButton.style.bottom='calc(max(7vh,env(safe-area-inset-bottom)) + (clamp(56px,10vh,68px) + 14px)*2)';
 const vehicleButton=makeActionButton('GET IN','50%','calc(50% + 35px)','#1c6846dd');
 vehicleButton.style.right='50%'; vehicleButton.style.transform='translateX(50%)';
 const exitVehicleButton=makeActionButton('EXIT','50%','calc(50% + 35px)','#7a3b2ddd');
