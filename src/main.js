@@ -396,23 +396,34 @@ hudRoot.appendChild(runButton);
 
 const hudStyle=document.createElement('style');
 hudStyle.textContent=`
+/* Landscape HUD: separated zones, no overlapping touch targets. */
 @media (orientation:landscape) {
- #ska-joystick{left:max(5vw,env(safe-area-inset-left))!important;bottom:max(4vh,env(safe-area-inset-bottom))!important;width:clamp(132px,23vh,176px)!important;height:clamp(132px,23vh,176px)!important}
- #ska-sprint{left:calc(max(5vw,env(safe-area-inset-left)) + 98px)!important;bottom:calc(max(4vh,env(safe-area-inset-bottom)) + 170px)!important;width:68px!important;height:68px!important}
- #ska-fpp{left:calc(max(5vw,env(safe-area-inset-left)) + 190px)!important;right:auto!important;bottom:max(4vh,env(safe-area-inset-bottom))!important;top:auto!important}
- #ska-jump{right:14vw!important;bottom:19vh!important;top:auto!important;width:clamp(78px,15vh,108px)!important;height:clamp(78px,15vh,108px)!important}
- #ska-crouch{right:5vw!important;bottom:19vh!important;top:auto!important}
- #ska-prone{right:5vw!important;bottom:4vh!important;top:auto!important}
- #ska-map{right:calc(5vw + 76px)!important;bottom:calc(4vh + 80px)!important;top:auto!important}
- #ska-camera-reset{right:calc(5vw + 76px)!important;bottom:calc(4vh + 158px)!important;top:auto!important}
+ #ska-joystick{position:fixed!important;left:4vw!important;bottom:6vh!important;top:auto!important;width:clamp(126px,24vh,166px)!important;height:clamp(126px,24vh,166px)!important}
+ #ska-sprint{left:calc(4vw + 82px)!important;bottom:calc(6vh + 166px)!important;top:auto!important;width:64px!important;height:64px!important}
+ #ska-fpp{left:calc(4vw + 176px)!important;right:auto!important;bottom:6vh!important;top:auto!important}
+ #ska-jump{right:4vw!important;bottom:6vh!important;top:auto!important;width:clamp(78px,15vh,100px)!important;height:clamp(78px,15vh,100px)!important}
+ #ska-crouch{right:4vw!important;bottom:calc(6vh + 112px)!important;top:auto!important}
+ #ska-prone{right:4vw!important;bottom:calc(6vh + 192px)!important;top:auto!important}
+ #ska-map{right:calc(4vw + 92px)!important;bottom:calc(6vh + 140px)!important;top:auto!important}
+ #ska-camera-reset{right:calc(4vw + 92px)!important;bottom:calc(6vh + 228px)!important;top:auto!important}
  #ska-fullscreen{right:max(14px,env(safe-area-inset-right))!important;top:max(12px,env(safe-area-inset-top))!important}
- #ska-map-panel{right:calc(5vw + 150px)!important;top:14px!important}
+ #ska-map-panel{right:calc(4vw + 180px)!important;top:12px!important}
  #ska-enter-vehicle,#ska-exit-vehicle{right:50%!important;top:48%!important;bottom:auto!important}
 }
+/* Portrait fallback: compact controls remain separated until landscape is entered. */
 @media (orientation:portrait) {
- #ska-crouch{right:calc(max(22px,env(safe-area-inset-right)) + 70px)!important;bottom:calc(max(7vh,env(safe-area-inset-bottom)) + 70px)!important;top:auto!important}
- #ska-prone{right:max(22px,env(safe-area-inset-right))!important;bottom:calc(max(7vh,env(safe-area-inset-bottom)) + 140px)!important;top:auto!important}
+ #ska-joystick{left:4vw!important;bottom:8vh!important;width:clamp(112px,16vh,138px)!important;height:clamp(112px,16vh,138px)!important}
+ #ska-sprint{left:calc(4vw + 82px)!important;bottom:calc(8vh + 140px)!important;top:auto!important;width:58px!important;height:58px!important}
+ #ska-fpp{right:5vw!important;left:auto!important;bottom:8vh!important;top:auto!important}
+ #ska-jump{right:5vw!important;bottom:calc(8vh + 78px)!important;top:auto!important}
+ #ska-crouch{right:5vw!important;bottom:calc(8vh + 156px)!important;top:auto!important}
+ #ska-prone{right:5vw!important;bottom:calc(8vh + 234px)!important;top:auto!important}
+ #ska-map{right:calc(5vw + 72px)!important;bottom:calc(8vh + 130px)!important;top:auto!important}
+ #ska-camera-reset{right:calc(5vw + 72px)!important;bottom:calc(8vh + 208px)!important;top:auto!important}
+ #ska-map-panel{right:5vw!important;top:74px!important}
 }
+#ska-action-toast{animation:skaToastFade 1.8s ease forwards}
+@keyframes skaToastFade{0%,65%{opacity:1}100%{opacity:0;visibility:hidden}}
 `;
 document.head.appendChild(hudStyle);
 
@@ -472,6 +483,9 @@ function toast(message){
  let t=document.getElementById('ska-action-toast');
  if(!t){t=document.createElement('div');t.id='ska-action-toast';t.style.cssText='position:fixed;left:50%;top:18%;transform:translateX(-50%);z-index:15;padding:9px 13px;border-radius:10px;background:#15232beF;color:white;font:700 13px Arial,sans-serif;pointer-events:none';hudRoot.appendChild(t)}
  t.textContent=message;
+ t.style.display='block';
+ clearTimeout(t._skaHideTimer);
+ t._skaHideTimer=setTimeout(()=>{t.style.display='none'},1800);
 }
 const crouchButton=makeActionButton('CROUCH','max(22px,env(safe-area-inset-right))','auto');
 crouchButton.id='ska-crouch';
@@ -521,6 +535,7 @@ hud.innerHTML='<strong style="font-size:17px;letter-spacing:1.4px">SKA ADVENTURE
 app.appendChild(hud);
 const hint=document.createElement('div');
 hint.style.cssText='position:fixed;left:50%;transform:translateX(-50%);bottom:max(12px,env(safe-area-inset-bottom));z-index:4;padding:8px 11px;border-radius:9px;background:#15232bd9;color:#fff;font-size:clamp(10px,2.5vw,12px);border:1px solid #ffffff45;white-space:nowrap;pointer-events:none';
+hint.style.display='none';
 hint.textContent='Move: joystick · Hold RUN to sprint · Drag: 360° camera';
 app.appendChild(hint);
 
