@@ -8,7 +8,7 @@ document.body.style.cssText = 'margin:0;overflow:hidden;background:#9bb8c7;font-
 app.style.cssText = 'position:fixed;inset:0;width:100%;height:100dvh;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none';
 const hudRoot=document.createElement('div');
 hudRoot.id='ska-mobile-hud';
-hudRoot.style.cssText='position:fixed;inset:0;z-index:2147483000;pointer-events:none;overflow:visible;contain:layout style';
+hudRoot.style.cssText='position:absolute;inset:0;width:100%;height:100%;z-index:2147483647;pointer-events:none;overflow:visible;contain:none;isolation:isolate;';
 app.appendChild(hudRoot);
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x9eb8c8);
@@ -33,12 +33,26 @@ app.appendChild(renderer.domElement);
 let landscapeRequested=false;
 async function requestLandscape(){
  try{
-  if(!document.fullscreenElement && app.requestFullscreen) await app.requestFullscreen();
+  if(!document.fullscreenElement){
+   const target=app.requestFullscreen?app:document.documentElement;
+   if(target.requestFullscreen) await target.requestFullscreen();
+  }
  }catch(error){ console.info('Fullscreen request was not accepted:',error); }
  try{
   if(screen.orientation && screen.orientation.lock) await screen.orientation.lock('landscape');
- }catch(error){ console.info('Landscape lock needs an installed app or manual rotation:',error); }
+ }catch(error){ console.info('This browser may require opening the installed app and enabling Auto-rotate:',error); }
+ updateHudLayout();
 }
+function updateHudLayout(){
+ const landscape=window.innerWidth>window.innerHeight;
+ hudRoot.style.width=window.innerWidth+'px';
+ hudRoot.style.height=window.innerHeight+'px';
+ hudRoot.dataset.orientation=landscape?'landscape':'portrait';
+}
+window.addEventListener('resize',updateHudLayout);
+window.addEventListener('orientationchange',()=>setTimeout(updateHudLayout,150));
+document.addEventListener('fullscreenchange',updateHudLayout);
+updateHudLayout();
 app.addEventListener('pointerdown',requestLandscape,{once:true});
 
 // Mobile-friendly fullscreen button. Fullscreen starts only after a user tap.
