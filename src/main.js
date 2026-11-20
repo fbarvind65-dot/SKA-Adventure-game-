@@ -435,8 +435,10 @@ function animate(){
   // Keep the player outside parked vehicles instead of allowing the model to pass through them.
   // Translate joystick input relative to the camera: UP always moves away
   // from the camera's view direction, DOWN moves toward it.
+  // Camera-relative controls: joystick up (negative y) always moves
+  // away from the camera; joystick down always moves toward the camera.
   const worldX=(x*Math.cos(cameraYaw))+(y*Math.sin(cameraYaw));
-  const worldZ=-(x*Math.sin(cameraYaw))+(y*Math.cos(cameraYaw));
+  const worldZ=-(x*Math.sin(cameraYaw))-(y*Math.cos(cameraYaw));
   const nextX=THREE.MathUtils.clamp(player.position.x+worldX*speed*dt,-95,95);
   const nextZ=THREE.MathUtils.clamp(player.position.z+worldZ*speed*dt,-245,245);
   const playerRadius=.62;
