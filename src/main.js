@@ -540,6 +540,40 @@ hint.style.display='none';
 hint.textContent='Move: joystick · Hold RUN to sprint · Drag: 360° camera';
 app.appendChild(hint);
 
+
+/* Main game lobby: the world is loaded behind this menu; Play enters the live world. */
+let gameStarted=false;
+hudRoot.style.display='none';
+hud.style.display='none';
+hint.style.display='none';
+const lobbyScreen=document.createElement('section');
+lobbyScreen.id='ska-lobby';
+lobbyScreen.style.cssText='position:fixed;inset:0;z-index:2147483646;display:flex;align-items:center;justify-content:center;padding:22px;box-sizing:border-box;background:linear-gradient(115deg,rgba(5,13,20,.82),rgba(5,13,20,.35) 55%,rgba(5,13,20,.78));font-family:Arial,sans-serif;color:#fff';
+lobbyScreen.innerHTML=`
+ <div style="width:min(720px,94vw);padding:clamp(20px,4vw,38px);box-sizing:border-box;border:1px solid #ffffff55;border-radius:24px;background:linear-gradient(145deg,#101c27ee,#182d3ae8);box-shadow:0 18px 60px #0009;backdrop-filter:blur(12px)">
+  <div style="font-size:clamp(11px,2vw,14px);letter-spacing:4px;color:#b8d2df;font-weight:700">OPEN WORLD ADVENTURE</div>
+  <div style="font-size:clamp(30px,6vw,54px);font-weight:900;letter-spacing:2px;margin-top:8px;text-shadow:0 4px 16px #0008">SKA ADVENTURE</div>
+  <div style="font-size:clamp(13px,2.4vw,17px);color:#d3e0e6;margin-top:8px">CITY DISTRICT</div>
+  <div style="height:1px;background:#ffffff35;margin:24px 0"></div>
+  <div style="font-size:12px;letter-spacing:2px;color:#a9c4d1;font-weight:700">GAME MODE</div>
+  <div style="display:flex;align-items:center;gap:12px;margin-top:10px;padding:14px;border:1px solid #ffffff55;border-radius:14px;background:#ffffff12">
+   <div style="width:42px;height:42px;border-radius:12px;display:grid;place-items:center;background:#31536a;font-size:22px">◎</div>
+   <div><div style="font-size:16px;font-weight:700">Solo Adventure</div><div style="font-size:12px;color:#c1d1d9;margin-top:4px">Explore the city · Free roam</div></div>
+   <div style="margin-left:auto;font-size:11px;color:#a9d7b7;border:1px solid #6ca98788;border-radius:20px;padding:5px 9px">AVAILABLE</div>
+  </div>
+  <button id="ska-lobby-play" type="button" style="width:100%;height:58px;margin-top:22px;border:0;border-radius:14px;background:linear-gradient(90deg,#d9a83f,#f2d17b);color:#17212a;font-size:17px;font-weight:900;letter-spacing:1.5px;box-shadow:0 8px 24px #0005;touch-action:manipulation">ENTER WORLD  ▶</button>
+  <div style="text-align:center;margin-top:14px;color:#a9bbc5;font-size:11px;letter-spacing:.5px">Single-player free roam · More modes can be added later</div>
+ </div>`;
+app.appendChild(lobbyScreen);
+lobbyScreen.querySelector('#ska-lobby-play').addEventListener('click',()=>{
+ gameStarted=true;
+ lobbyScreen.remove();
+ hudRoot.style.display='block';
+ hud.style.display='block';
+ cameraYaw=0;cameraPitch=.28;cameraDistance=8.5;
+ updateHudLayout();
+});
+
 const clock=new THREE.Clock();
 const desiredCamera=new THREE.Vector3();
 const lookTarget=new THREE.Vector3();
@@ -571,6 +605,7 @@ function animate(){
  let x=moveX+(keys.d||keys.arrowright?1:0)-(keys.a||keys.arrowleft?1:0);
  let y=moveY+(keys.s||keys.arrowdown?1:0)-(keys.w||keys.arrowup?1:0);
  const length=Math.hypot(x,y); if(length>1){x/=length;y/=length}
+ if(!gameStarted){x=0;y=0;}
  const moving=Math.hypot(x,y)>.08;
 
 // Detect nearby parked cars so GET IN appears only when useful.
