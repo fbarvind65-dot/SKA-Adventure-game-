@@ -57,6 +57,7 @@ app.addEventListener('pointerdown',requestLandscape,{once:true});
 
 // Mobile-friendly fullscreen button. Fullscreen starts only after a user tap.
 const fullButton=document.createElement('button');
+fullButton.id='ska-fullscreen';
 fullButton.type='button';
 fullButton.innerHTML='<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H3v5M16 3h5v5M21 16v5h-5M3 16v5h5"/></svg>';
 fullButton.setAttribute('aria-label','Enter fullscreen');
@@ -369,6 +370,7 @@ const keys={};
 addEventListener('keydown',e=>{keys[e.key.toLowerCase()]=true; if(['arrowup','arrowdown','arrowleft','arrowright',' '].includes(e.key.toLowerCase()))e.preventDefault();});
 addEventListener('keyup',e=>keys[e.key.toLowerCase()]=false);
 const control=document.createElement('div');
+control.id='ska-joystick';
 control.style.cssText='position:fixed;left:max(4vw,env(safe-area-inset-left));bottom:max(5vh,env(safe-area-inset-bottom));width:clamp(118px,20vh,150px);height:clamp(118px,20vh,150px);border:2px solid #ffffffaa;border-radius:50%;background:#17252c66;z-index:10000;touch-action:none;pointer-events:auto;backdrop-filter:blur(5px)';
 const knob=document.createElement('div');
 knob.style.cssText='position:absolute;width:54px;height:54px;left:calc(50% - 27px);top:calc(50% - 27px);border-radius:50%;background:#e8edf0dd;border:2px solid #fff;box-shadow:0 2px 8px #0005';
@@ -385,10 +387,34 @@ function resetStick(){dragging=false;moveX=moveY=0;knob.style.left='calc(50% - 2
 control.addEventListener('pointerup',resetStick);control.addEventListener('pointercancel',resetStick);
 // Mobile sprint control.
 const runButton=document.createElement('button');
+runButton.id='ska-sprint';
 runButton.type='button'; runButton.innerHTML='<svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="15.5" cy="4.5" r="2"/><path d="m13 8-3 4 4 2 2 6M10 12l-4 2-2 5M13 8l4 2 3 4M8 7l3 1"/></svg>';
 runButton.setAttribute('aria-label','Hold to run');
 runButton.style.cssText='position:fixed;left:calc(max(4vw,env(safe-area-inset-left)) + clamp(118px,20vh,150px) - 34px);right:auto;bottom:calc(max(5vh,env(safe-area-inset-bottom)) + clamp(118px,20vh,150px) + 12px);z-index:10000;width:66px;height:66px;display:flex;align-items:center;justify-content:center;border-radius:50%;border:2px solid #ffffffdd;background:#17252cdd;color:#fff;touch-action:none;box-shadow:0 4px 16px #0006;pointer-events:auto';
 hudRoot.appendChild(runButton);
+
+
+const hudStyle=document.createElement('style');
+hudStyle.textContent=`
+@media (orientation:landscape) {
+ #ska-joystick{left:max(5vw,env(safe-area-inset-left))!important;bottom:max(4vh,env(safe-area-inset-bottom))!important;width:clamp(132px,23vh,176px)!important;height:clamp(132px,23vh,176px)!important}
+ #ska-sprint{left:calc(max(5vw,env(safe-area-inset-left)) + 98px)!important;bottom:calc(max(4vh,env(safe-area-inset-bottom)) + 170px)!important;width:68px!important;height:68px!important}
+ #ska-fpp{left:calc(max(5vw,env(safe-area-inset-left)) + 190px)!important;right:auto!important;bottom:max(4vh,env(safe-area-inset-bottom))!important;top:auto!important}
+ #ska-jump{right:14vw!important;bottom:19vh!important;top:auto!important;width:clamp(78px,15vh,108px)!important;height:clamp(78px,15vh,108px)!important}
+ #ska-crouch{right:5vw!important;bottom:19vh!important;top:auto!important}
+ #ska-prone{right:5vw!important;bottom:4vh!important;top:auto!important}
+ #ska-map{right:calc(5vw + 76px)!important;bottom:calc(4vh + 80px)!important;top:auto!important}
+ #ska-camera-reset{right:calc(5vw + 76px)!important;bottom:calc(4vh + 158px)!important;top:auto!important}
+ #ska-fullscreen{right:max(14px,env(safe-area-inset-right))!important;top:max(12px,env(safe-area-inset-top))!important}
+ #ska-map-panel{right:calc(5vw + 150px)!important;top:14px!important}
+ #ska-enter-vehicle,#ska-exit-vehicle{right:50%!important;top:48%!important;bottom:auto!important}
+}
+@media (orientation:portrait) {
+ #ska-crouch{right:calc(max(22px,env(safe-area-inset-right)) + 70px)!important;bottom:calc(max(7vh,env(safe-area-inset-bottom)) + 70px)!important;top:auto!important}
+ #ska-prone{right:max(22px,env(safe-area-inset-right))!important;bottom:calc(max(7vh,env(safe-area-inset-bottom)) + 140px)!important;top:auto!important}
+}
+`;
+document.head.appendChild(hudStyle);
 
 // Context-aware mobile action buttons. Controls appear only when their action is available.
 const actionIcons={
@@ -410,21 +436,35 @@ function makeActionButton(label, right, top, color='#17252cdd'){
  return b;
 }
 const jumpButton=makeActionButton('JUMP','max(22px,env(safe-area-inset-right))','auto');
+jumpButton.id='ska-jump';
 jumpButton.style.bottom='max(7vh,calc(env(safe-area-inset-bottom) + 12px))';
 const viewButton=makeActionButton('FPP','max(22px,env(safe-area-inset-right))','auto');
+viewButton.id='ska-fpp';
 viewButton.style.bottom='calc(max(7vh,env(safe-area-inset-bottom)) + clamp(56px,10vh,68px) + 14px)';
 const mapButton=makeActionButton('MAP','max(22px,env(safe-area-inset-right))','auto');
+mapButton.id='ska-map';
 mapButton.style.bottom='calc(max(7vh,env(safe-area-inset-bottom)) + (clamp(56px,10vh,68px) + 14px)*2)';
 const resetButton=makeActionButton('RESET','max(22px,env(safe-area-inset-right))','auto');
+resetButton.id='ska-camera-reset';
 resetButton.style.bottom='calc(max(7vh,env(safe-area-inset-bottom)) + (clamp(56px,10vh,68px) + 14px)*3)';
 const vehicleButton=makeActionButton('GET IN','50%','calc(50% + 35px)','#1c6846dd');
+vehicleButton.id='ska-enter-vehicle';
 vehicleButton.style.right='50%'; vehicleButton.style.transform='translateX(50%)';
 const exitVehicleButton=makeActionButton('EXIT','50%','calc(50% + 35px)','#7a3b2ddd');
+exitVehicleButton.id='ska-exit-vehicle';
 exitVehicleButton.style.right='50%'; exitVehicleButton.style.transform='translateX(50%)';
 
 let jumpVelocity=0, jumpActive=false, isDriving=false, activeVehicle=null, nearbyVehicle=null;
+let playerStance='stand';
+function setPlayerStance(next){
+ playerStance=playerStance===next?'stand':next;
+ player.scale.y=playerStance==='crouch'?.72:playerStance==='prone'?.42:1;
+ crouchButton.style.background=playerStance==='crouch'?'#426c8ddd':'#17252cdd';
+ proneButton.style.background=playerStance==='prone'?'#426c8ddd':'#17252cdd';
+}
 let firstPerson=false, mapOpen=false;
 const mapPanel=document.createElement('div');
+mapPanel.id='ska-map-panel';
 mapPanel.style.cssText='position:fixed;right:14px;top:68px;z-index:8;width:150px;height:150px;border:2px solid #ffffffaa;border-radius:12px;background:#17252cdd;color:#fff;display:none;overflow:hidden;pointer-events:none';
 mapPanel.innerHTML='<div style="padding:6px 8px;font:700 11px Arial">CITY MAP</div><div style="position:absolute;left:50%;top:50%;width:5px;height:5px;border-radius:50%;background:#4cff91;box-shadow:0 0 0 5px #4cff9144"></div><div style="position:absolute;left:50%;top:0;bottom:0;width:2px;background:#aab6bc88"></div><div style="position:absolute;top:50%;left:0;right:0;height:2px;background:#aab6bc88"></div>';
 hudRoot.appendChild(mapPanel);
@@ -433,8 +473,18 @@ function toast(message){
  if(!t){t=document.createElement('div');t.id='ska-action-toast';t.style.cssText='position:fixed;left:50%;top:18%;transform:translateX(-50%);z-index:15;padding:9px 13px;border-radius:10px;background:#15232beF;color:white;font:700 13px Arial,sans-serif;pointer-events:none';hudRoot.appendChild(t)}
  t.textContent=message;
 }
+const crouchButton=makeActionButton('CROUCH','max(22px,env(safe-area-inset-right))','auto');
+crouchButton.id='ska-crouch';
+crouchButton.innerHTML='<svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="15.5" cy="4.5" r="2"/><path d="m13 8-3 3 2 3 4 1 2 5M10 11l-4 2-2 4M12 14l-3 4 5 1"/></svg>';
+crouchButton.style.bottom='calc(max(7vh,env(safe-area-inset-bottom)) + clamp(56px,10vh,68px) + 14px)';
+const proneButton=makeActionButton('PRONE','max(22px,env(safe-area-inset-right))','auto');
+proneButton.id='ska-prone';
+proneButton.innerHTML='<svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="10" r="2"/><path d="M8 12h8l3 3M10 12l-2 5M14 12l2 5M18 15l3 2"/></svg>';
+proneButton.style.bottom='calc(max(7vh,env(safe-area-inset-bottom)) + (clamp(56px,10vh,68px) + 14px)*2)';
+crouchButton.addEventListener('click',()=>setPlayerStance('crouch'));
+proneButton.addEventListener('click',()=>setPlayerStance('prone'));
 jumpButton.addEventListener('click',()=>{
- if(!jumpActive&&!isDriving){jumpVelocity=6.2;jumpActive=true;}
+ if(!jumpActive&&!isDriving){setPlayerStance('stand');jumpVelocity=6.2;jumpActive=true;}
 });
 viewButton.addEventListener('click',()=>{
  firstPerson=!firstPerson;
@@ -531,6 +581,7 @@ function animate(){
  }
  if(moving){
   const sprinting=runHeld||keys.shift;
+  const stanceSpeed=playerStance==='prone'?.28:playerStance==='crouch'?.62:1;
   if(isDriving&&activeVehicle){
    const driveSpeed=sprinting?13:8;
    const driveX=(x*Math.cos(cameraYaw))+(y*Math.sin(cameraYaw));
@@ -539,7 +590,7 @@ function animate(){
    activeVehicle.position.z=THREE.MathUtils.clamp(activeVehicle.position.z+driveZ*driveSpeed*dt,-245,245);
    player.position.copy(activeVehicle.position);
   }else{
-  const speed=sprinting?8.2:5.2;
+  const speed=(sprinting?8.2:5.2)*stanceSpeed;
   // Keep the player outside parked vehicles instead of allowing the model to pass through them.
   // Translate joystick input relative to the camera: UP always moves away
   // from the camera's view direction, DOWN moves toward it.
