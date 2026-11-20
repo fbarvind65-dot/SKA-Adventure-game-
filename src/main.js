@@ -318,8 +318,9 @@ function setCharacterAnimation(state) {
 }
 
 // Parked vehicles along the road.
+const vehicles=[];
 function car(x,z,color){
- const g=new THREE.Group(); g.position.set(x,0,z); scene.add(g);
+ const g=new THREE.Group(); g.position.set(x,0,z); scene.add(g); vehicles.push(g);
  const paint=new THREE.MeshStandardMaterial({color,metalness:.58,roughness:.3});
  box(g,2.05,.62,4.2,paint,0,.85,0);
  box(g,1.62,.72,2.25,materials.darkGlass,0,1.48,-.12);
@@ -380,7 +381,7 @@ const lookTarget=new THREE.Vector3();
 let walkTime=0;
 
 // 360-degree camera: drag anywhere on the world view to orbit around the player.
-let cameraYaw=0, cameraPitch=0.22, cameraDistance=10.5;
+let cameraYaw=0, cameraPitch=0.28, cameraDistance=8.5;
 let cameraPointer=null, lastPointerX=0, lastPointerY=0;
 renderer.domElement.addEventListener('pointerdown',e=>{
  cameraPointer=e.pointerId; lastPointerX=e.clientX; lastPointerY=e.clientY;
@@ -397,7 +398,7 @@ function stopCameraDrag(e){if(cameraPointer===e.pointerId)cameraPointer=null}
 renderer.domElement.addEventListener('pointerup',stopCameraDrag);
 renderer.domElement.addEventListener('pointercancel',stopCameraDrag);
 renderer.domElement.addEventListener('wheel',e=>{
- cameraDistance=THREE.MathUtils.clamp(cameraDistance+e.deltaY*.012,5.5,22);
+ cameraDistance=THREE.MathUtils.clamp(cameraDistance+e.deltaY*.012,6.5,18);
 },{passive:true});
 function animate(){
  requestAnimationFrame(animate);
@@ -413,10 +414,23 @@ function animate(){
  if(moving){
   const sprinting=runHeld||keys.shift;
   const speed=sprinting?8.2:5.2;
-  player.position.x+=x*speed*dt;
-  player.position.z+=y*speed*dt;
-  player.position.x=THREE.MathUtils.clamp(player.position.x,-95,95);
-  player.position.z=THREE.MathUtils.clamp(player.position.z,-245,245);
+  // Keep the player outside parked vehicles instead of allowing the model to pass through them.
+  const nextX=THREE.MathUtils.clamp(player.position.x+x*speed*dt,-95,95);
+  const nextZ=THREE.MathUtils.clamp(player.position.z+y*speed*dt,-245,245);
+  const playerRadius=.62;
+  let blockedX=false,blockedZ=false;
+  for(const vehicle of vehicles){
+   const dx=nextX-vehicle.position.x;
+   const dz=nextZ-vehicle.position.z;
+   const insideX=Math.abs(dx)<1.35+playerRadius;
+   const insideZ=Math.abs(dz)<2.25+playerRadius;
+   if(insideX&&insideZ){
+    if(Math.abs(dx)>Math.abs(dz)) blockedZ=true;
+    else blockedX=true;
+   }
+  }
+  if(!blockedX) player.position.x=nextX;
+  if(!blockedZ) player.position.z=nextZ;
   player.rotation.y=Math.atan2(x,y);
   walkTime+=dt*10;
   leftLeg.rotation.x=Math.sin(walkTime)*.58;
