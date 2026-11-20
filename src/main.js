@@ -28,14 +28,12 @@ app.appendChild(renderer.domElement);
 // versions also declare landscape in the web app manifest.
 let landscapeRequested=false;
 async function requestLandscape(){
- if(landscapeRequested)return;
- landscapeRequested=true;
  try{
   if(!document.fullscreenElement && app.requestFullscreen) await app.requestFullscreen();
+ }catch(error){ console.info('Fullscreen request was not accepted:',error); }
+ try{
   if(screen.orientation && screen.orientation.lock) await screen.orientation.lock('landscape');
- }catch(error){
-  console.info('This browser requires manual device rotation or installation as an app:',error);
- }
+ }catch(error){ console.info('Landscape lock needs an installed app or manual rotation:',error); }
 }
 app.addEventListener('pointerdown',requestLandscape,{once:true});
 
@@ -46,14 +44,7 @@ fullButton.textContent='⛶';
 fullButton.setAttribute('aria-label','Enter fullscreen');
 fullButton.style.cssText='position:fixed;right:max(14px,env(safe-area-inset-right));top:max(14px,env(safe-area-inset-top));z-index:8;width:42px;height:42px;border:1px solid #ffffff88;border-radius:12px;background:#15232bd9;color:#fff;font-size:25px;line-height:1;touch-action:manipulation';
 app.appendChild(fullButton);
-fullButton.addEventListener('click',async()=>{
- try{
-  if(!document.fullscreenElement && app.requestFullscreen) await app.requestFullscreen();
-  if(screen.orientation && screen.orientation.lock) await screen.orientation.lock('landscape');
- }catch(error){
-  console.warn('Fullscreen or landscape lock is not available in this browser:',error);
- }
-});
+fullButton.addEventListener('click',requestLandscape);
 
 
 scene.add(new THREE.HemisphereLight(0xdceeff,0x65715b,1.65));
@@ -385,9 +376,9 @@ app.appendChild(runButton);
 function makeActionButton(label, right, top, color='#17252cdd'){
  const b=document.createElement('button');
  b.type='button'; b.textContent=label;
- b.style.cssText=`position:fixed;right:${right};top:${top};z-index:9;min-width:58px;min-height:48px;padding:9px 12px;border:1.5px solid #ffffffbb;border-radius:13px;background:${color};color:#fff;font:800 12px Arial,sans-serif;letter-spacing:.4px;box-shadow:0 3px 12px #0005;touch-action:manipulation;display:block`;
+ b.style.cssText=`position:fixed;right:${right};top:${top};z-index:10000;min-width:64px;min-height:54px;padding:10px 14px;border:2px solid #ffffffdd;border-radius:14px;background:${color};color:#fff;font:900 13px Arial,sans-serif;letter-spacing:.5px;box-shadow:0 4px 14px #0009;touch-action:manipulation;display:block;visibility:visible;opacity:1;pointer-events:auto`;
  b.addEventListener('pointerdown',e=>e.stopPropagation());
- app.appendChild(b);
+ document.body.appendChild(b);
  return b;
 }
 const jumpButton=makeActionButton('JUMP','max(22px,env(safe-area-inset-right))','auto');
@@ -406,10 +397,10 @@ let firstPerson=false, mapOpen=false;
 const mapPanel=document.createElement('div');
 mapPanel.style.cssText='position:fixed;right:14px;top:68px;z-index:8;width:150px;height:150px;border:2px solid #ffffffaa;border-radius:12px;background:#17252cdd;color:#fff;display:none;overflow:hidden;pointer-events:none';
 mapPanel.innerHTML='<div style="padding:6px 8px;font:700 11px Arial">CITY MAP</div><div style="position:absolute;left:50%;top:50%;width:5px;height:5px;border-radius:50%;background:#4cff91;box-shadow:0 0 0 5px #4cff9144"></div><div style="position:absolute;left:50%;top:0;bottom:0;width:2px;background:#aab6bc88"></div><div style="position:absolute;top:50%;left:0;right:0;height:2px;background:#aab6bc88"></div>';
-app.appendChild(mapPanel);
+document.body.appendChild(mapPanel);
 function toast(message){
  let t=document.getElementById('ska-action-toast');
- if(!t){t=document.createElement('div');t.id='ska-action-toast';t.style.cssText='position:fixed;left:50%;top:18%;transform:translateX(-50%);z-index:15;padding:9px 13px;border-radius:10px;background:#15232beF;color:white;font:700 13px Arial,sans-serif;pointer-events:none';app.appendChild(t)}
+ if(!t){t=document.createElement('div');t.id='ska-action-toast';t.style.cssText='position:fixed;left:50%;top:18%;transform:translateX(-50%);z-index:15;padding:9px 13px;border-radius:10px;background:#15232beF;color:white;font:700 13px Arial,sans-serif;pointer-events:none';document.body.appendChild(t)}
  t.textContent=message;
 }
 jumpButton.addEventListener('click',()=>{
