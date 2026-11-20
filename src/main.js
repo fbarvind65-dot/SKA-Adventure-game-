@@ -380,20 +380,22 @@ runButton.type='button'; runButton.textContent='RUN';
 runButton.setAttribute('aria-label','Hold to run');
 runButton.style.cssText='position:fixed;right:max(22px,env(safe-area-inset-right));bottom:max(38px,env(safe-area-inset-bottom));z-index:6;width:clamp(78px,15vw,94px);height:clamp(78px,15vw,94px);border-radius:50%;border:2px solid #ffffffdd;background:#17252cdd;color:#fff;font-weight:800;letter-spacing:1px;font-size:16px;touch-action:none;box-shadow:0 4px 16px #0006';
 app.appendChild(runButton);
-app.appendChild(runButton);
 
 // Context-aware mobile action buttons. Controls appear only when their action is available.
 function makeActionButton(label, right, top, color='#17252cdd'){
  const b=document.createElement('button');
  b.type='button'; b.textContent=label;
- b.style.cssText=`position:fixed;right:${right};top:${top};z-index:9;min-width:58px;min-height:48px;padding:9px 12px;border:1.5px solid #ffffffbb;border-radius:13px;background:${color};color:#fff;font:800 12px Arial,sans-serif;letter-spacing:.4px;box-shadow:0 3px 12px #0005;touch-action:manipulation;display:none`;
+ b.style.cssText=`position:fixed;right:${right};top:${top};z-index:9;min-width:58px;min-height:48px;padding:9px 12px;border:1.5px solid #ffffffbb;border-radius:13px;background:${color};color:#fff;font:800 12px Arial,sans-serif;letter-spacing:.4px;box-shadow:0 3px 12px #0005;touch-action:manipulation;display:block`;
  b.addEventListener('pointerdown',e=>e.stopPropagation());
  app.appendChild(b);
  return b;
 }
-const jumpButton=makeActionButton('JUMP','max(22px,env(safe-area-inset-right))','calc(50% + 42px)');
-const viewButton=makeActionButton('FPP','max(22px,env(safe-area-inset-right))','calc(50% - 18px)');
-const mapButton=makeActionButton('MAP','max(22px,env(safe-area-inset-right))','calc(50% - 78px)');
+const jumpButton=makeActionButton('JUMP','max(22px,env(safe-area-inset-right))','auto');
+jumpButton.style.bottom='max(118px,calc(env(safe-area-inset-bottom) + 105px))';
+const viewButton=makeActionButton('FPP','max(22px,env(safe-area-inset-right))','auto');
+viewButton.style.bottom='max(178px,calc(env(safe-area-inset-bottom) + 165px))';
+const mapButton=makeActionButton('MAP','max(22px,env(safe-area-inset-right))','auto');
+mapButton.style.bottom='max(238px,calc(env(safe-area-inset-bottom) + 225px))';
 const vehicleButton=makeActionButton('GET IN','50%','calc(50% + 35px)','#1c6846dd');
 vehicleButton.style.right='50%'; vehicleButton.style.transform='translateX(50%)';
 const exitVehicleButton=makeActionButton('EXIT','50%','calc(50% + 35px)','#7a3b2ddd');
