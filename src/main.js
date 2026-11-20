@@ -469,7 +469,8 @@ let jumpVelocity=0, jumpActive=false, isDriving=false, activeVehicle=null, nearb
 let playerStance='stand';
 function setPlayerStance(next){
  playerStance=playerStance===next?'stand':next;
- player.scale.y=playerStance==='crouch'?.72:playerStance==='prone'?.42:1;
+ // Keep the character's full model height; stance changes movement speed only.
+ player.scale.set(1,1,1);
  crouchButton.style.background=playerStance==='crouch'?'#426c8ddd':'#17252cdd';
  proneButton.style.background=playerStance==='prone'?'#426c8ddd':'#17252cdd';
 }
