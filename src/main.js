@@ -267,6 +267,10 @@ characterLoader.load(playerModelUrl, (gltf) => {
  }
 }, undefined, (error) => {
  console.error('Could not load SKA Adventure GLB character:', error);
+ const modelError = document.createElement('div');
+ modelError.style.cssText = 'position:fixed;left:12px;right:12px;top:110px;z-index:20;padding:12px 14px;border-radius:10px;background:#541f1feF;color:#fff;font:13px Arial,sans-serif;line-height:1.45;white-space:normal;overflow-wrap:anywhere';
+ modelError.textContent = '3D character could not load: ' + (error?.message || error?.type || 'Unknown loading error');
+ app.appendChild(modelError);
 });
 function setCharacterAnimation(state) {
  if (!characterMixer || !characterActions[state] || characterAnimationState === state) return;
