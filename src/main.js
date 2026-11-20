@@ -564,8 +564,14 @@ lobbyScreen.innerHTML=`
   <button id="ska-lobby-play" type="button" style="width:100%;height:58px;margin-top:22px;border:0;border-radius:14px;background:linear-gradient(90deg,#d9a83f,#f2d17b);color:#17212a;font-size:17px;font-weight:900;letter-spacing:1.5px;box-shadow:0 8px 24px #0005;touch-action:manipulation">ENTER WORLD  ▶</button>
   <div style="text-align:center;margin-top:14px;color:#a9bbc5;font-size:11px;letter-spacing:.5px">Single-player free roam · More modes can be added later</div>
  </div>`;
-app.appendChild(lobbyScreen);
+lobbyScreen.style.zIndex='2147483647';
+lobbyScreen.style.pointerEvents='auto';
+lobbyScreen.style.visibility='visible';
+lobbyScreen.style.opacity='1';
+lobbyScreen.style.display='flex';
+document.body.appendChild(lobbyScreen);
 lobbyScreen.querySelector('#ska-lobby-play').addEventListener('click',()=>{
+ requestLandscape();
  gameStarted=true;
  lobbyScreen.remove();
  hudRoot.style.display='block';
