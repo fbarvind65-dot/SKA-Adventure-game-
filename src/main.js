@@ -399,7 +399,7 @@ vehicleButton.style.right='50%'; vehicleButton.style.transform='translateX(50%)'
 const exitVehicleButton=makeActionButton('EXIT','50%','calc(50% + 35px)','#7a3b2ddd');
 exitVehicleButton.style.right='50%'; exitVehicleButton.style.transform='translateX(50%)';
 
-let jumpVelocity=0, jumpActive=false, isDriving=false, activeVehicle=null;
+let jumpVelocity=0, jumpActive=false, isDriving=false, activeVehicle=null, nearbyVehicle=null;
 let firstPerson=false, mapOpen=false;
 const mapPanel=document.createElement('div');
 mapPanel.style.cssText='position:fixed;right:14px;top:68px;z-index:8;width:150px;height:150px;border:2px solid #ffffffaa;border-radius:12px;background:#17252cdd;color:#fff;display:none;overflow:hidden;pointer-events:none';
@@ -480,7 +480,7 @@ function animate(){
  const moving=Math.hypot(x,y)>.08;
 
 // Detect nearby parked cars so GET IN appears only when useful.
- let nearbyVehicle=null;
+ nearbyVehicle=null;
  if(!isDriving){
   let nearest=5.2;
   for(const vehicle of vehicles){
