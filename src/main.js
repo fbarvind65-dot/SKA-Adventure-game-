@@ -85,6 +85,13 @@ function building(x,z,w,d,h,wall,seed=0){
  const g=new THREE.Group(); g.position.set(x,0,z); scene.add(g);
  box(g,w,h,d,wall,0,h/2,0);
  box(g,w+.35,.28,d+.35,materials.roof,0,h+.12,0);
+ // Raised parapet and rooftop service structures break up flat roof silhouettes.
+ box(g,w+.12,.42,.18,materials.concrete,0,h+.43,-d/2+.12,false);
+ box(g,w+.12,.42,.18,materials.concrete,0,h+.43,d/2-.12,false);
+ box(g,.18,.42,d,materials.concrete,-w/2+.12,h+.43,0,false);
+ box(g,.18,.42,d,materials.concrete,w/2-.12,h+.43,0,false);
+ box(g,1.35,.9,1.15,materials.roof,w*.23,h+.72,-d*.18);
+ box(g,1.05,.12,.9,materials.concrete,w*.23,h+1.2,-d*.18,false);
  box(g,w*.94,.18,d*.94,materials.concrete,0,.12,0);
  const floors=Math.max(1,Math.floor((h-1.5)/3.1));
  const cols=Math.max(2,Math.floor(w/2.25));
@@ -96,6 +103,18 @@ function building(x,z,w,d,h,wall,seed=0){
    box(g,1.02,.09,.13,materials.white,wx,wy-.7,d/2+.08,false);
    box(g,.08,1.35,.13,materials.white,wx-.51,wy,d/2+.08,false);
    box(g,.08,1.35,.13,materials.white,wx+.51,wy,d/2+.08,false);
+   // Deep stone sill and lintel add realistic depth to each window.
+   box(g,1.12,.11,.22,materials.concrete,wx,wy-.73,d/2+.12,false);
+   box(g,1.12,.09,.18,materials.concrete,wx,wy+.73,d/2+.10,false);
+   // Selected windows receive small metal balconies.
+   if((c+f+seed)%4===0){
+    box(g,1.25,.12,.72,materials.concrete,wx,wy-.83,d/2+.38,false);
+    const railMat=mat(0x454b4c,.48,.62);
+    box(g,1.2,.055,.055,railMat,wx,wy-.28,d/2+.72,false);
+    for(let post=0;post<5;post++){
+     box(g,.035,.55,.035,railMat,wx-.58+post*.29,wy-.56,d/2+.72,false);
+    }
+   }
   }
  }
  box(g,1.25,2.25,.12,materials.roof,0,1.15,d/2+.08);
@@ -241,7 +260,7 @@ characterLoader.load(playerModelUrl, (gltf) => {
  const bounds = new THREE.Box3().setFromObject(character);
  const size = bounds.getSize(new THREE.Vector3());
  const center = bounds.getCenter(new THREE.Vector3());
- const targetHeight = 2.15;
+ const targetHeight = 2.35;
  const scale = targetHeight / Math.max(size.y, 0.001);
  character.scale.setScalar(scale);
  character.position.set(-center.x * scale, -bounds.min.y * scale, -center.z * scale);
