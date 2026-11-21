@@ -31,30 +31,44 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Diagnose character animation rig
+      - name: Diagnose walk animation keyframes
         run: |
           node --input-type=module <<'NODE'
           import fs from 'node:fs';
+          import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
+          await MeshoptDecoder.ready;
           function readGlb(path) {
             const b=fs.readFileSync(path);
-            if (b.toString('utf8',0,4)!=='glTF') throw new Error('Not a GLB: '+path);
-            const n=b.readUInt32LE(12);
-            return JSON.parse(b.toString('utf8',20,20+n).trim());
+            const jsonLength=b.readUInt32LE(12);
+            return {b,j:JSON.parse(b.toString('utf8',20,20+jsonLength).trim()),binStart:28+jsonLength};
           }
-          const model=readGlb('src/Business_Female_02.glb');
-          const modelNames=new Set((model.nodes||[]).map(n=>n.name).filter(Boolean));
-          const relevant=[...modelNames].filter(n=>/bip|thigh|calf|foot|pelvis|hip|armature|root|leg/i.test(n));
-          console.log('PLAYER_NODE_COUNT',model.nodes?.length,'PLAYER_SKINS',(model.skins||[]).length);
-          console.log('PLAYER_RIG_NAMES',JSON.stringify(relevant));
-          for (const path of ['src/f_idle_neutral_01.glb','src/f_walk_neutral_01.glb']) {
-            const g=readGlb(path);
-            const tracks=[];
-            for (const a of g.animations||[]) for (const c of a.channels||[]) {
-              tracks.push(g.nodes?.[c.target.node]?.name||'NO_NODE');
+          const {b,j,binStart}=readGlb('src/f_walk_neutral_01.glb');
+          async function viewBytes(index) {
+            const v=j.bufferViews[index], ext=v.extensions?.EXT_meshopt_compression;
+            if (!ext) return b.subarray(binStart+(v.byteOffset||0),binStart+(v.byteOffset||0)+v.byteLength);
+            const src=b.subarray(binStart+ext.byteOffset,binStart+ext.byteOffset+ext.byteLength);
+            const target=new Uint8Array(ext.count*ext.byteStride);
+            await MeshoptDecoder.decodeGltfBuffer(target,ext.count,ext.byteStride,src,ext.mode);
+            return target;
+          }
+          async function accessor(index) {
+            const a=j.accessors[index],v=j.bufferViews[a.bufferView],data=await viewBytes(a.bufferView);
+            const width=({SCALAR:1,VEC2:2,VEC3:3,VEC4:4})[a.type],stride=v.extensions?.EXT_meshopt_compression?.byteStride||v.byteStride||width*4;
+            const rows=[];
+            for(let i=0;i<a.count;i++){const row=[];for(let k=0;k<width;k++)row.push(new DataView(data.buffer,data.byteOffset,data.byteLength).getFloat32((a.byteOffset||0)+i*stride+k*4,true));rows.push(row);}
+            return rows;
+          }
+          const clip=j.animations?.[0];
+          for(const channel of clip.channels) {
+            const node=j.nodes[channel.target.node]?.name||'';
+            if(!/Bip01$|Bip01 [LR] (Thigh|Calf|Foot|Toe0)/.test(node)) continue;
+            const sampler=clip.samplers[channel.sampler],times=(await accessor(sampler.input)).flat(),values=await accessor(sampler.output);
+            if(channel.target.path==='rotation'){
+              const angles=values.map(q=>2*Math.atan2(q[0],q[3])*180/Math.PI);
+              console.log('WALK_TRACK',node,'FRAMES',times.length,'DURATION',times.at(-1).toFixed(3),'X_DEG_RANGE',Math.min(...angles).toFixed(1),Math.max(...angles).toFixed(1),'X_SAMPLES',angles.filter((_,i)=>i%Math.max(1,Math.floor(angles.length/8))===0).map(x=>x.toFixed(1)).join(','));
+            } else {
+              console.log('WALK_TRACK',node,channel.target.path,'FRAMES',times.length,'DURATION',times.at(-1).toFixed(3),'FIRST',values[0].map(x=>x.toFixed(3)).join(','),'LAST',values.at(-1).map(x=>x.toFixed(3)).join(','));
             }
-            const unique=[...new Set(tracks)];
-            const matched=unique.filter(n=>modelNames.has(n));
-            console.log('ANIMATION',path,'NODES',unique.length,'MATCHED',matched.length,'MISSING',JSON.stringify(unique.filter(n=>!modelNames.has(n))));
           }
           NODE
       - name: Build game
