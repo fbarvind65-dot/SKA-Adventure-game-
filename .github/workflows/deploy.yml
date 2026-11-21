@@ -47,6 +47,38 @@ jobs:
             for(const name of targets){const a=mn.get(name),b=cn.get(name);if(!b)continue;console.log(name,'ANGLE_DIFF',diff(a.rotation,b.rotation).toFixed(2),'MODEL',JSON.stringify(a.rotation||[0,0,0,1]),'ANIMATION',JSON.stringify(b.rotation||[0,0,0,1]));}
           }
           NODE
+      - name: Inspect character and Sit Stand rig clips
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          function read(path){
+            const b=fs.readFileSync(path);
+            const n=b.readUInt32LE(12);
+            return JSON.parse(b.toString('utf8',20,20+n).trim());
+          }
+          for(const path of ['src/Business_Female_02.glb','src/Business_Female_02-rigged-animated.glb']){
+            const gltf=read(path);
+            console.log('RIG_FILE',path,'NODES',gltf.nodes?.length,'SKINS',gltf.skins?.length);
+            const parents=new Map();
+            for(let i=0;i<(gltf.nodes||[]).length;i++){
+              for(const child of gltf.nodes[i].children||[])parents.set(child,i);
+            }
+            for(let i=0;i<(gltf.nodes||[]).length;i++){
+              const n=gltf.nodes[i];
+              if(/bip01|pelvis|hips|spine|thigh|calf|neck|head|clav|upperarm|forearm/i.test(n.name||'')){
+                console.log('BONE',i,'PARENT',parents.get(i),n.name,'ROT',JSON.stringify(n.rotation||[0,0,0,1]),'POS',JSON.stringify(n.translation||[0,0,0]));
+              }
+            }
+            for(const clip of gltf.animations||[]){
+              const nodes=new Set();
+              for(const channel of clip.channels||[]){
+                const target=gltf.nodes?.[channel.target?.node];
+                if(target)nodes.add(target.name+' '+channel.target.path);
+              }
+              console.log('CLIP',clip.name,'TRACKS',clip.channels?.length,'TARGETS',[...nodes].join(' | '));
+            }
+          }
+          NODE
       - name: Build game
         run: npm run build
 
