@@ -404,7 +404,7 @@ characterLoader.load(playerModelUrl, (gltf) => {
  // Use the uploaded model instead of the procedural placeholder.
  torso.visible = false;
  if (gltf.animations && gltf.animations.length) {
-  characterMixer = new THREE.AnimationMixer(character);
+  if (!characterMixer) characterMixer = new THREE.AnimationMixer(character);
   const findClip = (pattern) => gltf.animations.find((clip) => pattern.test(clip.name));
   const idleClip = findClip(/idle|stand|breath/i) || gltf.animations[0];
   const walkClip = findClip(/walk|walking/i) || idleClip;
