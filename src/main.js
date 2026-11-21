@@ -306,6 +306,7 @@ player.position.set(0,0,18);
 // Load the uploaded GLB character and use its embedded animations when available.
 let characterMixer = null;
 let proceduralRigBones = [];
+let neutralHeadBones = [];
 let characterActions = {};
 let activeCharacterAction = null;
 let characterAnimationState = '';
@@ -325,6 +326,10 @@ characterLoader.load(playerModelUrl, (gltf) => {
   if (object.isMesh) { object.castShadow=true; object.receiveShadow=true; }
   if(object.isBone){
    const n=object.name.toLowerCase().replace(/[^a-z0-9]/g,'');
+   if(/head|neck/.test(n)){
+    neutralHeadBones.push({bone:object,base:object.quaternion.clone()});
+    return;
+   }
    let role='',side=1,amp=.55;
    // Use only the main spine joint. Rotating Spine1/Spine2 as well made the
    // upper body twist and caused the head to look sideways during SIT.
@@ -800,6 +805,11 @@ function animate(){
  }
  crouchPoseBlend=THREE.MathUtils.damp(crouchPoseBlend,playerStance==='crouch'?1:0,8,dt);
  pronePoseBlend=THREE.MathUtils.damp(pronePoseBlend,playerStance==='prone'?1:0,8,dt);
+ // Keep the head facing forward while sneaking or lying down, even if a
+ // locomotion clip contains a head-turn track.
+ if(crouchPoseBlend>.015||pronePoseBlend>.015){
+  for(const entry of neutralHeadBones)entry.bone.quaternion.copy(entry.base);
+ }
  if(proceduralRigBones.length){
   for(const e of proceduralRigBones){
    let crouchPose=0,pronePose=0;
