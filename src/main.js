@@ -3,6 +3,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import playerModelUrl from './Business_Female_02.glb?url';
 import idleAnimationUrl from './f_idle_neutral_01.glb?url';
+import walkAnimationUrl from './f_walk_neutral_01.glb?url';
 
 const app = document.querySelector('#app');
 document.body.style.cssText = 'margin:0;overflow:hidden;background:#9bb8c7;font-family:Arial,sans-serif;overscroll-behavior:none;touch-action:none';
@@ -350,6 +351,17 @@ characterLoader.load(playerModelUrl, (gltf) => {
   characterActions.idle = idleAction;
   if (characterAnimationState === 'idle' || !activeCharacterAction) setCharacterAnimation('idle');
  }, undefined, (error) => console.warn('Idle animation GLB could not load:', error));
+ // Load the separately uploaded walk clip and bind it to the same character rig.
+ characterLoader.load(walkAnimationUrl, (walkGltf) => {
+  const walkClip = walkGltf.animations?.find((clip) => /walk|walking/i.test(clip.name)) || walkGltf.animations?.[0];
+  if (!walkClip) {
+   console.warn('Walk GLB loaded, but it contains no animation clip.');
+   return;
+  }
+  if (!characterMixer) characterMixer = new THREE.AnimationMixer(character);
+  characterActions.walk = characterMixer.clipAction(walkClip);
+  if (characterAnimationState === 'walk') setCharacterAnimation('walk');
+ }, undefined, (error) => console.warn('Walk animation GLB could not load:', error));
  // Use the uploaded model instead of the procedural placeholder.
  torso.visible = false;
  if (gltf.animations && gltf.animations.length) {
