@@ -1150,10 +1150,14 @@ if(pickupLabel.style.display==='block'){const p=roadPickup.position.clone();p.y+
    player.position.copy(activeVehicle.position);
   }else{
   const walkSpeed=.35+joystickStrength*1.85;
-  const speed=THREE.MathUtils.lerp(walkSpeed,4.2,runBlend)*(keys.shift?1.05:1)*stanceSpeed;
-  // Match the animation cycle to actual movement speed to reduce foot sliding.
+  // Crouch movement stays controlled at every joystick position; sprint input
+  // must not turn a crouched walk into a fast, sliding upright-style run.
+  const speed=playerStance==='crouch'
+   ?THREE.MathUtils.lerp(.55,1.35,joystickStrength)
+   :THREE.MathUtils.lerp(walkSpeed,4.2,runBlend)*(keys.shift?1.05:1)*stanceSpeed;
+  // Match the crouch animation cycle to the slower in-world movement.
   if(playerStance==='crouch'&&crouchWalkAction){
-   crouchWalkAction.setEffectiveTimeScale(THREE.MathUtils.clamp(.78*(speed/1.1),.24,1.05));
+   crouchWalkAction.setEffectiveTimeScale(THREE.MathUtils.clamp(speed/1.1,.4,1.05));
   }else if(characterAnimationState==='walk'&&characterActions.walk){
    characterActions.walk.setEffectiveTimeScale(THREE.MathUtils.clamp(speed/1.65,.22,1.3));
   }else if(characterAnimationState==='run'&&characterActions.run){
