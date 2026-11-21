@@ -21,7 +21,7 @@ const camera = new THREE.PerspectiveCamera( sixtyFive(), innerWidth / innerHeigh
 function sixtyFive(){ return 65; }
 const renderer = new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});
 renderer.setSize(innerWidth,innerHeight);
-renderer.setPixelRatio(Math.min(devicePixelRatio,1.35));
+renderer.setPixelRatio(Math.min(devicePixelRatio,1.75));
 renderer.domElement.style.touchAction='none';
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -449,7 +449,7 @@ control.style.cssText='position:fixed;left:max(4vw,env(safe-area-inset-left));bo
 const knob=document.createElement('div');
 knob.style.cssText='position:absolute;width:54px;height:54px;left:calc(50% - 27px);top:calc(50% - 27px);border-radius:50%;background:#e8edf0dd;border:2px solid #fff;box-shadow:0 2px 8px #0005';
 control.appendChild(knob); hudRoot.appendChild(control);
-let moveX=0,moveY=0,dragging=false,runHeld=false;
+let moveX=0,moveY=0,dragging=false;
 function joystick(e){
  const r=control.getBoundingClientRect(),radius=r.width/2,limit=radius-29,dx=e.clientX-(r.left+radius),dy=e.clientY-(r.top+radius);
  const len=Math.hypot(dx,dy),scale=len>limit?limit/len:1,x=dx*scale,y=dy*scale;
@@ -459,21 +459,11 @@ control.addEventListener('pointerdown',e=>{dragging=true;control.setPointerCaptu
 control.addEventListener('pointermove',e=>{if(dragging)joystick(e)});
 function resetStick(){dragging=false;moveX=moveY=0;knob.style.left='calc(50% - 27px)';knob.style.top='calc(50% - 27px)'}
 control.addEventListener('pointerup',resetStick);control.addEventListener('pointercancel',resetStick);
-// Mobile sprint control.
-const runButton=document.createElement('button');
-runButton.id='ska-sprint';
-runButton.type='button'; runButton.innerHTML='<svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="15.5" cy="4.5" r="2"/><path d="m13 8-3 4 4 2 2 6M10 12l-4 2-2 5M13 8l4 2 3 4M8 7l3 1"/></svg>';
-runButton.setAttribute('aria-label','Hold to run');
-runButton.style.cssText='position:fixed;left:calc(max(4vw,env(safe-area-inset-left)) + clamp(118px,20vh,150px) - 34px);right:auto;bottom:calc(max(5vh,env(safe-area-inset-bottom)) + clamp(118px,20vh,150px) + 12px);z-index:10000;width:66px;height:66px;display:flex;align-items:center;justify-content:center;border-radius:50%;border:2px solid #ffffffdd;background:#17252cdd;color:#fff;touch-action:none;box-shadow:0 4px 16px #0006;pointer-events:auto';
-hudRoot.appendChild(runButton);
-
-
 const hudStyle=document.createElement('style');
 hudStyle.textContent=`
 /* Landscape HUD: separated zones, no overlapping touch targets. */
 @media (orientation:landscape) {
  #ska-joystick{position:fixed!important;left:4vw!important;bottom:6vh!important;top:auto!important;width:clamp(126px,24vh,166px)!important;height:clamp(126px,24vh,166px)!important}
- #ska-sprint{left:calc(4vw + 82px)!important;bottom:calc(6vh + 166px)!important;top:auto!important;width:64px!important;height:64px!important}
  #ska-fpp{left:calc(4vw + 176px)!important;right:auto!important;bottom:6vh!important;top:auto!important}
  #ska-jump{right:4vw!important;bottom:6vh!important;top:auto!important;width:clamp(78px,15vh,100px)!important;height:clamp(78px,15vh,100px)!important}
  #ska-crouch{right:4vw!important;bottom:calc(6vh + 112px)!important;top:auto!important}
@@ -487,7 +477,6 @@ hudStyle.textContent=`
 /* Portrait fallback: compact controls remain separated until landscape is entered. */
 @media (orientation:portrait) {
  #ska-joystick{left:4vw!important;bottom:8vh!important;width:clamp(112px,16vh,138px)!important;height:clamp(112px,16vh,138px)!important}
- #ska-sprint{left:calc(4vw + 82px)!important;bottom:calc(8vh + 140px)!important;top:auto!important;width:58px!important;height:58px!important}
  #ska-fpp{right:5vw!important;left:auto!important;bottom:8vh!important;top:auto!important}
  #ska-jump{right:5vw!important;bottom:calc(8vh + 78px)!important;top:auto!important}
  #ska-crouch{right:5vw!important;bottom:calc(8vh + 156px)!important;top:auto!important}
@@ -600,10 +589,6 @@ exitVehicleButton.addEventListener('click',()=>{
  player.visible=true; isDriving=false; activeVehicle=null;
  toast('You left the vehicle');
 });
-runButton.addEventListener('pointerdown',e=>{e.preventDefault();runHeld=true;runButton.style.background='#286b42dd';runButton.setPointerCapture(e.pointerId)});
-function stopRun(){runHeld=false;runButton.style.background='#17252cbb'}
-runButton.addEventListener('pointerup',stopRun);runButton.addEventListener('pointercancel',stopRun);runButton.addEventListener('lostpointercapture',stopRun);
-
 const hud=document.createElement('div');
 hud.style.cssText='position:fixed;top:max(14px,env(safe-area-inset-top));left:max(14px,env(safe-area-inset-left));z-index:4;color:#fff;text-shadow:0 2px 5px #000;background:#15232bd9;border:1px solid #ffffff45;border-radius:12px;padding:10px 13px;font-size:clamp(12px,2.5vw,14px);letter-spacing:.3px;backdrop-filter:blur(8px);pointer-events:none';
 hud.innerHTML='<strong style="font-size:17px;letter-spacing:1.4px">SKA ADVENTURE</strong><div style="margin-top:5px;color:#d6e2e7">OPEN WORLD · CITY DISTRICT</div>';
@@ -731,7 +716,8 @@ function animate(){
  let y=moveY+(keys.s||keys.arrowdown?1:0)-(keys.w||keys.arrowup?1:0);
  const length=Math.hypot(x,y); if(length>1){x/=length;y/=length}
  if(!gameStarted){x=0;y=0;}
- const moving=Math.hypot(x,y)>.08;
+ const joystickStrength=THREE.MathUtils.clamp(Math.hypot(x,y),0,1);
+ const moving=joystickStrength>.035;
 
 // Detect nearby parked cars so GET IN appears only when useful.
  nearbyVehicle=null;
@@ -752,7 +738,7 @@ function animate(){
   if(player.position.y<=0){player.position.y=0;jumpVelocity=0;jumpActive=false;}
  }
  if (characterMixer) {
-  setCharacterAnimation(moving ? ((runHeld || keys.shift) ? 'run' : 'walk') : 'idle');
+  setCharacterAnimation(moving ? ((keys.shift || joystickStrength > 0.72) ? 'run' : 'walk') : 'idle');
   characterMixer.update(dt);
  }
  if(proceduralRigBones.length && (playerStance==='crouch' || playerStance==='prone')){
@@ -778,17 +764,18 @@ function animate(){
   }
  }
  if(moving){
-  const sprinting=runHeld||keys.shift;
+  const sprinting=keys.shift||joystickStrength>0.72;
+  const runBlend=THREE.MathUtils.smoothstep(joystickStrength,0.58,1);
   const stanceSpeed=playerStance==='prone'?.28:playerStance==='crouch'?.62:1;
   if(isDriving&&activeVehicle){
-   const driveSpeed=sprinting?13:8;
+   const driveSpeed=(5+joystickStrength*5+runBlend*3)*(keys.shift?1.15:1);
    const driveX=(x*Math.cos(cameraYaw))+(y*Math.sin(cameraYaw));
    const driveZ=-(x*Math.sin(cameraYaw))+(y*Math.cos(cameraYaw));
    activeVehicle.position.x=THREE.MathUtils.clamp(activeVehicle.position.x+driveX*driveSpeed*dt,-95,95);
    activeVehicle.position.z=THREE.MathUtils.clamp(activeVehicle.position.z+driveZ*driveSpeed*dt,-245,245);
    player.position.copy(activeVehicle.position);
   }else{
-  const speed=(sprinting?6.8:5.2)*stanceSpeed;
+  const speed=(1.4+joystickStrength*3.8+runBlend*4.2)*(keys.shift?1.12:1)*stanceSpeed;
   // Keep the player outside parked vehicles instead of allowing the model to pass through them.
   // Translate joystick input relative to the camera: UP always moves away
   // from the camera's view direction, DOWN moves toward it.
