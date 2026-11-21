@@ -391,7 +391,11 @@ characterLoader.load(playerModelUrl, (gltf) => {
    return;
   }
   if (!characterMixer) characterMixer = new THREE.AnimationMixer(character);
+  // The player group owns forward motion. Remove the walk file's root translation
+  // so the rig cannot drift independently underneath the moving character.
+  walkClip.tracks=walkClip.tracks.filter(track=>!(/^(?:Bip01|RootNode)\.position$/i.test(track.name)));
   characterActions.walk = characterMixer.clipAction(walkClip);
+  characterActions.walk.setLoop(THREE.LoopRepeat,Infinity);
   const crouchWalkClip=walkClip.clone();
   crouchWalkClip.tracks=crouchWalkClip.tracks.filter(track=>{
    const nodeName=normalizeBoneName(track.name.slice(0,track.name.lastIndexOf('.'))).replace(/^bip01/,'');
@@ -446,7 +450,7 @@ characterLoader.load(playerModelUrl, (gltf) => {
   const sourceHeight=sourceBounds.getSize(new THREE.Vector3()).y;
   const targetHeightNow=new THREE.Box3().setFromObject(character).getSize(new THREE.Vector3()).y;
   const translationScale=targetHeightNow/Math.max(sourceHeight,.001);
-  const retargetClip=(sourceClip,keepArms=true,sourceBoneMap=sourceBones)=>{
+  const retargetClip=(sourceClip,keepArms=true,sourceBoneMap=sourceBones,ignoreRootTranslation=false)=>{
    const clip=sourceClip.clone(),mappedTracks=[];
    for(const track of clip.tracks){
     const split=track.name.lastIndexOf('.');
@@ -454,6 +458,7 @@ characterLoader.load(playerModelUrl, (gltf) => {
     const property=track.name.slice(split+1);
     const sourceName=track.name.slice(0,split);
     const sourceKey=normalizeBoneName(sourceName).replace(/^mixamorig/,'');
+    if(ignoreRootTranslation&&property==='position'&&/^(hips|root)$/.test(sourceKey))continue;
     const targetKey=sourceToTarget[sourceKey];
     if(!targetKey)continue;
     // Sit-down animation folds the forearms/hands together unnaturally.
@@ -533,7 +538,7 @@ characterLoader.load(playerModelUrl, (gltf) => {
    });
    const sourceCrouchClip=crouchGltf.animations?.find(clip=>/crouch|walk/i.test(clip.name))||crouchGltf.animations?.[0];
    if(!sourceCrouchClip){console.warn('Crouched walk GLB has no animation clip');toast('Crouch walk clip missing');return;}
-   const mappedCrouchClip=retargetClip(sourceCrouchClip,true,crouchBones);
+   const mappedCrouchClip=retargetClip(sourceCrouchClip,true,crouchBones,true);
    if(!mappedCrouchClip.tracks.length){console.warn('Crouched walk retarget found no matching BIP01 tracks',sourceCrouchClip.tracks.map(t=>t.name));toast('Crouch walk rig mapping failed');return;}
    if(crouchWalkAction)crouchWalkAction.stop();
    crouchWalkAction=characterMixer.clipAction(mappedCrouchClip);
@@ -1069,10 +1074,21 @@ if(pickupLabel.style.display==='block'){const p=roadPickup.position.clone();p.y+
    if(crouchWalkAction)crouchWalkAction.stop();
   }else if(playerStance==='crouch'){
    if(moving&&crouchWalkAction){
-    if(!crouchWalkAction.isRunning())crouchWalkAction.reset().play();
-    crouchWalkAction.enabled=true;crouchWalkAction.setEffectiveWeight(.18);
-   }else if(crouchWalkAction)crouchWalkAction.stop();
-   if(moving&&sitAction&&sitAction.isRunning())sitAction.stop();
+    if(!crouchWalkAction.isRunning()){
+     if(activeCharacterAction&&activeCharacterAction!==crouchWalkAction)activeCharacterAction.fadeOut(.12);
+     Object.values(characterActions).forEach(action=>{if(action&&action!==crouchWalkAction)action.fadeOut(.12);});
+     if(standAction)standAction.fadeOut(.12);
+     crouchWalkAction.reset().setEffectiveWeight(1).fadeIn(.12).play();
+    }
+    if(sitAction){sitAction.stopFading();sitAction.enabled=true;sitAction.setEffectiveWeight(.08);}
+    crouchWalkAction.enabled=true;crouchWalkAction.setEffectiveWeight(1);
+    activeCharacterAction=crouchWalkAction;characterAnimationState='crouch-walk';
+   }else{
+    if(crouchWalkAction)crouchWalkAction.stop();
+    if(sitAction){sitAction.stopFading();sitAction.enabled=true;sitAction.paused=true;sitAction.time=sitAction.getClip().duration;sitAction.setEffectiveWeight(1);}
+    if(activeCharacterAction===crouchWalkAction)activeCharacterAction=sitAction;
+    characterAnimationState='crouch-idle';
+   }
   }else{
    if(crouchWalkAction)crouchWalkAction.stop();
    const sprinting=keys.shift||joystickStrength>0.72;
@@ -1122,7 +1138,16 @@ if(pickupLabel.style.display==='block'){const p=roadPickup.position.clone();p.y+
    activeVehicle.position.z=THREE.MathUtils.clamp(activeVehicle.position.z+driveZ*driveSpeed*dt,-245,245);
    player.position.copy(activeVehicle.position);
   }else{
-  const speed=(1.8+joystickStrength*3.1+runBlend*3.5)*(keys.shift?1.08:1)*stanceSpeed;
+  const walkSpeed=.35+joystickStrength*1.85;
+  const speed=THREE.MathUtils.lerp(walkSpeed,4.2,runBlend)*(keys.shift?1.05:1)*stanceSpeed;
+  // Match the animation cycle to actual movement speed to reduce foot sliding.
+  if(playerStance==='crouch'&&crouchWalkAction){
+   crouchWalkAction.setEffectiveTimeScale(THREE.MathUtils.clamp(.78*(speed/1.1),.48,1.05));
+  }else if(characterAnimationState==='walk'&&characterActions.walk){
+   characterActions.walk.setEffectiveTimeScale(THREE.MathUtils.clamp(speed/1.65,.45,1.3));
+  }else if(characterAnimationState==='run'&&characterActions.run){
+   characterActions.run.setEffectiveTimeScale(THREE.MathUtils.clamp(speed/4.1,.72,1.25));
+  }
   // Keep the player outside parked vehicles instead of allowing the model to pass through them.
   // Translate joystick input relative to the camera: UP always moves away
   // from the camera's view direction, DOWN moves toward it.
