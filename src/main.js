@@ -737,7 +737,8 @@ inventoryPanel.innerHTML='<div style="display:flex;justify-content:space-between
 const bagItemsNode=inventoryPanel.querySelector('#ska-bag-items');
 function refreshInventory(){
  bagItemsNode.innerHTML='';
- if(!inventoryItems.length){bagItemsNode.textContent='No items collected yet.';return;}
+ refreshWeaponVisual();
+ if(!inventoryItems.length){bagItemsNode.textContent='No items collected yet.';const icon=document.getElementById('ska-action-weapon-icon');if(icon)icon.textContent='✊';punchButton.title='MUKKA';refreshWeaponVisual();return;}
  inventoryItems.forEach(item=>{
   const row=document.createElement('button');row.type='button';row.textContent=item.icon+'  '+item.name+(equippedItem===item?'  ✓':'');row.style.cssText='display:block;width:100%;margin:5px 0;padding:10px;text-align:left;border:1px solid #ffffff55;border-radius:9px;background:'+(equippedItem===item?'#28644b':'#ffffff12')+';color:white;font:700 14px Arial;touch-action:manipulation';
   row.addEventListener('click',()=>{equippedItem=item;refreshInventory();refreshWeaponVisual();toast(item.name+' selected');});
@@ -746,7 +747,7 @@ function refreshInventory(){
  const icon=document.getElementById('ska-action-weapon-icon');if(icon)icon.textContent=equippedItem?equippedItem.icon:'✊';punchButton.title=equippedItem?equippedItem.name:'MUKKA';
 }
 wireButtonAction(backpackButton,()=>{inventoryPanel.style.display=inventoryPanel.style.display==='block'?'none':'block';refreshInventory();});inventoryPanel.querySelector('#ska-bag-close').addEventListener('click',()=>inventoryPanel.style.display='none');
-const weaponSelectButton=makeActionButton('BAG','auto','auto','#4a382bdd');weaponSelectButton.id='ska-weapon-select';weaponSelectButton.style.left='18px';weaponSelectButton.style.right='auto';weaponSelectButton.style.bottom='18px';weaponSelectButton.style.top='auto';weaponSelectButton.innerHTML='<span style="font-size:29px">⚔️</span>';weaponSelectButton.title='WEAPONS';weaponSelectButton.setAttribute('aria-label','Weapons');
+const weaponSelectButton=makeActionButton('BAG','auto','auto','#4a382bdd');weaponSelectButton.id='ska-weapon-select';weaponSelectButton.style.left='50%';weaponSelectButton.style.right='auto';weaponSelectButton.style.transform='translateX(-50%)';weaponSelectButton.style.bottom='18px';weaponSelectButton.style.top='auto';weaponSelectButton.innerHTML='<span style="font-size:29px">⚔️</span>';weaponSelectButton.title='WEAPONS';weaponSelectButton.setAttribute('aria-label','Weapons');
 wireButtonAction(weaponSelectButton,()=>{inventoryPanel.style.display=inventoryPanel.style.display==='block'?'none':'block';refreshInventory();});
 
 jumpButton.id='ska-jump';
@@ -796,7 +797,7 @@ function playSitDown(){
  sitAction.reset().setEffectiveTimeScale(1.55).setEffectiveWeight(1).fadeIn(.06).play();
  activeCharacterAction=sitAction;
  characterAnimationState='sit-transition';
- crouchButton.textContent='SITTING…';
+ crouchButton.style.filter='brightness(1.35)';
 }
 function playStandUp(nextStance='stand'){
  if(sitStandBusy)return;
@@ -809,7 +810,7 @@ function playStandUp(nextStance='stand'){
  standAction.reset().setEffectiveTimeScale(1.55).setEffectiveWeight(1).fadeIn(.06).play();
  activeCharacterAction=standAction;
  characterAnimationState='stand-transition';
- crouchButton.textContent='GETTING UP…';
+ crouchButton.style.filter='brightness(1.35)';
 }
 function toggleSitStand(){
  if(isSitting)playStandUp('stand');
