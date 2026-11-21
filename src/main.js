@@ -7,6 +7,7 @@ import walkAnimationUrl from './f_walk_neutral_01.glb?url';
 import runAnimationUrl from './f_run_neutral_01.glb?url';
 import sitStandBundleUrl from './Business_Female_02-rigged-animated.glb?url';
 import crouchWalkAnimationUrl from './Walk_-_crouched_forwards.glb?url';
+import punchAnimationUrl from './Punch_-_cross_right_2.glb?url';
 
 const app = document.querySelector('#app');
 document.body.style.cssText = 'margin:0;overflow:hidden;background:#9bb8c7;font-family:Arial,sans-serif;overscroll-behavior:none;touch-action:none';
@@ -312,7 +313,7 @@ let characterActions = {};
 let activeCharacterAction = null;
 let characterAnimationState = '';
 let pronePoseBlend=0, crouchWalkPoseBlend=0;
-let sitAction=null, standAction=null, crouchWalkAction=null;
+let sitAction=null, standAction=null, crouchWalkAction=null, punchAction=null, punchPlaying=false;
 let sitStandBusy=false, isSitting=false, pendingStanceAfterStand='stand';
 const characterLoader = new GLTFLoader();
 characterLoader.setMeshoptDecoder(MeshoptDecoder);
@@ -528,6 +529,25 @@ characterLoader.load(playerModelUrl, (gltf) => {
    crouchWalkAction.timeScale=.78;
    console.info('Retargeted crouched-forward walk to BIP01:',mappedCrouchClip.tracks.length,'tracks');
   },undefined,error=>{console.warn('Crouched walk GLB failed to load:',error);toast('Crouch walk animation failed to load');});
+  // Load the uploaded right-cross punch and retarget it to the active BIP01 rig.
+  characterLoader.load(punchAnimationUrl,punchGltf=>{
+   const punchBones=new Map();
+   punchGltf.scene.updateMatrixWorld(true);
+   punchGltf.scene.traverse(object=>{
+    if(object.isBone)punchBones.set(normalizeBoneName(object.name).replace(/^mixamorig/,''),object);
+   });
+   const sourcePunchClip=punchGltf.animations?.find(clip=>/punch|cross|right/i.test(clip.name))||punchGltf.animations?.[0];
+   if(!sourcePunchClip){console.warn('Punch GLB contains no animation clip');toast('Punch animation clip missing');return;}
+   const mappedPunchClip=retargetClip(sourcePunchClip,true,punchBones);
+   if(!mappedPunchClip.tracks.length){console.warn('Punch retarget found no matching rig tracks',sourcePunchClip.tracks.map(track=>track.name));toast('Punch animation rig mapping failed');return;}
+   if(!characterMixer)characterMixer=new THREE.AnimationMixer(character);
+   punchAction=characterMixer.clipAction(mappedPunchClip);
+   punchAction.setLoop(THREE.LoopOnce,1);punchAction.clampWhenFinished=true;
+   characterMixer.addEventListener('finished',event=>{
+    if(event.action===punchAction){punchPlaying=false;activeCharacterAction=null;characterAnimationState='';}
+   });
+   console.info('Retargeted punch animation to BIP01:',mappedPunchClip.tracks.length,'tracks');
+  },undefined,error=>{console.warn('Punch GLB failed to load:',error);toast('Punch animation failed to load');});
   console.info('Retargeted uploaded Sit/Stand clips to BIP01 rig:',sitClip.tracks.length,standClip.tracks.length);
  },undefined,error=>console.warn('Sit/Stand animation bundle failed to load:',error));
  // Use the uploaded model instead of the procedural placeholder.
@@ -794,7 +814,15 @@ wireButtonAction(proneButton,()=>{
   else setPlayerStance('prone');
  }
 });
-wireButtonAction(punchButton,()=>{if(gameStarted&&!isDriving&&!isSitting&&!jumpActive){punchSide*=-1;punchTimer=.48;toast('Punch');}});
+wireButtonAction(punchButton,()=>{
+ if(!gameStarted||isDriving||isSitting||playerStance!=='stand'||jumpActive||sitStandBusy||punchPlaying)return;
+ if(!punchAction){toast('Punch animation is loading');return;}
+ punchPlaying=true;punchTimer=0;
+ if(activeCharacterAction&&activeCharacterAction!==punchAction)activeCharacterAction.fadeOut(.08);
+ punchAction.reset().setEffectiveWeight(1).fadeIn(.08).play();
+ activeCharacterAction=punchAction;characterAnimationState='punch';
+ toast('Punch');
+});
 wireButtonAction(jumpButton,()=>{
  if(!jumpActive&&!isDriving){
   if(isSitting)playStandUp('stand');
@@ -982,7 +1010,9 @@ function animate(){
   if(e.appliedOffset){e.bone.rotation.x-=e.appliedOffset;e.appliedOffset=0;}
  }
  if(characterMixer){
-  if(sitStandBusy){
+  if(punchPlaying){
+   if(crouchWalkAction)crouchWalkAction.stop();
+  }else if(sitStandBusy){
    if(crouchWalkAction)crouchWalkAction.stop();
   }else if(playerStance==='crouch'){
    if(moving&&crouchWalkAction){
@@ -1004,9 +1034,7 @@ function animate(){
  crouchWalkPoseBlend=THREE.MathUtils.damp(crouchWalkPoseBlend,crouchWalking?1:0,7,dt);
  // Low, forward-leaning stealth gait: bend at hips/spine and keep arms loose,
  // while the filtered walk clip supplies alternating leg steps.
- if(proceduralRigBones.length&&punchStrength>.001&&!isDriving){
-  for(const e of proceduralRigBones){if(e.role==='arm'||e.role==='forearm'){const side=e.side*punchSide;e.bone.rotation.x-=punchStrength*(e.role==='arm'?.72:.38);e.bone.rotation.z+=punchStrength*side*(e.role==='arm'?.42:.24);}}
- }
+ // Punch motion now comes from the uploaded cross-right GLB clip, not a procedural arm swing.
  if(false&&proceduralRigBones.length&&crouchWalkPoseBlend>.001){
   for(const e of proceduralRigBones){
    let pose=0;
