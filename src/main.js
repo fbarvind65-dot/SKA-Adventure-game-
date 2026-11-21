@@ -564,7 +564,10 @@ characterLoader.load(playerModelUrl, (gltf) => {
    // were retargeting into a wide, upright pose on this character.
    mappedCrouchClip.tracks=mappedCrouchClip.tracks.filter(track=>{
     const node=normalizeBoneName(track.name.slice(0,track.name.lastIndexOf('.'))).replace(/^bip01/,'');
-    return /^(pelvis|hips|spine|spine1|spine2|lthigh|rthigh|lcalf|rcalf|lfoot|rfoot|ltoe0|rtoe0)$/.test(node);
+    // Keep the animation on the leg chain only. The source GLB's pelvis/spine
+    // tracks tilt the retargeted body backward on this character and cause
+    // the crouch-walk to look like a seated slide.
+    return /^(lthigh|rthigh|lcalf|rcalf|lfoot|rfoot|ltoe0|rtoe0)$/.test(node);
    });
    if(!mappedCrouchClip.tracks.length){console.warn('Crouched walk retarget found no matching BIP01 tracks',sourceCrouchClip.tracks.map(t=>t.name));toast('Crouch walk rig mapping failed');return;}
    if(crouchWalkAction)crouchWalkAction.stop();
