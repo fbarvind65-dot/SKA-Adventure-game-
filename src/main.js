@@ -992,6 +992,28 @@ const mapSelectCss=document.createElement('style');
 mapSelectCss.textContent="#ska-lobby .l-map-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}#ska-lobby .l-map-card{min-height:130px;padding:12px;border:1px solid #ffffff40;border-radius:12px;background:linear-gradient(145deg,#253b49,#101b25);text-align:left;display:flex;flex-direction:column;justify-content:space-between}#ska-lobby .l-map-card.selected{border:2px solid #f2cf70;box-shadow:0 0 0 2px #f2cf7025,0 8px 22px #0005}#ska-lobby .l-map-card .map-num{font-size:10px;letter-spacing:1.5px;color:#f2cf70}#ska-lobby .l-map-card strong{font-size:16px;display:block;margin:8px 0}#ska-lobby .l-map-card small{font-size:11px;color:#c4d2da;line-height:1.4}#ska-lobby .l-map-card .map-state{font-size:10px;font-weight:900;color:#a9d9b7;margin-top:8px}#ska-lobby .l-map-card.map-unbuilt .map-state{color:#f2cf70}";
 document.head.appendChild(mapSelectCss);
 
+const lobbyReturnButton=document.createElement('button');
+lobbyReturnButton.id='ska-return-lobby';
+lobbyReturnButton.type='button';
+lobbyReturnButton.textContent='⌂  LOBBY';
+lobbyReturnButton.setAttribute('aria-label','Return to game lobby');
+lobbyReturnButton.style.cssText='position:fixed;top:max(12px,env(safe-area-inset-top));left:max(12px,env(safe-area-inset-left));z-index:2147483647;display:none;pointer-events:auto;padding:10px 15px;border:1px solid #f2cf70;border-radius:10px;background:linear-gradient(120deg,#172a37ed,#101923ed);color:#fff;font:900 13px Arial,sans-serif;letter-spacing:1px;box-shadow:0 4px 16px #0008;touch-action:manipulation';
+app.appendChild(lobbyReturnButton);
+lobbyReturnButton.addEventListener('click',async()=>{
+ gameStarted=false;
+ lobbyReturnButton.style.display='none';
+ hudRoot.style.display='none';hud.style.display='none';hint.style.display='none';
+ lobbyStageBase.visible=true;lobbyStageRing.visible=true;
+ vehicles[0].position.set(-4.1,0,17.2);
+ player.position.set(0,0,18);
+ scene.background=lobbyBackgroundTexture;
+ cameraYaw=0;cameraPitch=.24;cameraDistance=8.5;
+ lobbyModal.classList.remove('open');
+ if(!lobbyScreen.isConnected)app.appendChild(lobbyScreen);
+ try{if(document.fullscreenElement&&document.exitFullscreen)await document.exitFullscreen();}catch(error){console.info('Could not exit fullscreen:',error)}
+ updateHudLayout();
+});
+
 const lobbyScreen=document.createElement('section');
 lobbyScreen.id='ska-lobby';
 lobbyScreen.innerHTML='<header class="l-top"><button class="l-profile" data-lobby-panel="profile"><span class="l-avatar">SP</span><span><span class="l-name">SKA PLAYER</span><span class="l-level">LEVEL 01 · ROOKIE</span><span class="l-xp"><i></i></span></span></button><div class="l-brand"><b>SKA ADVENTURE</b><small>CITY DISTRICT · FREE ROAM</small></div><div class="l-wallet"><span class="l-currency">✦ 0</span><span class="l-currency">◆ 0</span><button class="l-add" data-lobby-panel="credits">+</button><button class="l-settings" data-lobby-panel="settings">⚙</button><button class="l-settings" id="ska-lobby-landscape" aria-label="Fullscreen landscape">⛶</button></div></header><aside class="l-left"><div class="l-section-title">FRIENDS <span style="color:#fff">0/30</span></div><button class="l-friend" data-lobby-panel="friends"><i>+</i><div>ADD FRIENDS<span>Single-player mode</span></div></button><button class="l-friend" data-lobby-panel="team"><i>◎</i><div>TEAM<span>No team connected</span></div></button><div class="l-rail"><button data-lobby-panel="missions" aria-label="Missions">⚡</button><button data-lobby-panel="rewards" aria-label="Rewards">🏅</button><button data-lobby-panel="mail" aria-label="Messages">✉</button></div></aside><aside class="l-right"><div class="l-section-title">CITY ACTIVITIES</div><button class="l-event" data-lobby-panel="events"><span class="l-event-ico">🎁</span><span><b>DAILY REWARDS</b><small>View your rewards</small></span></button><button class="l-event" data-lobby-panel="missions"><span class="l-event-ico">✦</span><span><b>CITY MISSIONS</b><small>Explore the district</small></span></button><button class="l-event" data-lobby-panel="workshop"><span class="l-event-ico">⚒</span><span><b>WORKSHOP</b><small>Character showcase</small></span></button></aside><section class="l-bottom-left"><button class="l-mode" data-lobby-panel="mode"><b>SELECT MAP　⌄</b><small>Choose Map 1 or Map 2</small></button><button class="l-start" id="ska-lobby-play">START</button></section><nav class="l-bottom-nav"><button data-lobby-panel="report">REPORT</button><button data-lobby-panel="theme">THEME</button><button data-lobby-panel="workshop">WORKSHOP</button><button data-lobby-panel="inventory">INVENTORY</button><button data-lobby-panel="settings">⚙</button></nav><div class="l-status">● SINGLE PLAYER　　CITY DISTRICT　　SKA ADVENTURE</div><div class="l-modal" id="ska-lobby-modal"><div class="l-modal-card"><div class="l-modal-head"><span id="ska-lobby-modal-title">MENU</span><button class="l-close" id="ska-lobby-close">×</button></div><div class="l-modal-body" id="ska-lobby-modal-body"></div></div></div>';
@@ -1045,6 +1067,7 @@ lobbyScreen.querySelector('#ska-lobby-play').addEventListener('click',async()=>{
   return;
  }
  gameStarted=true;
+ lobbyReturnButton.style.display='block';
  hudRoot.style.display='block';hud.style.display='block';hint.style.display='block';
  try{await requestLandscape();}catch(e){console.info('Fullscreen unavailable',e)}
  lobbyScreen.remove();
