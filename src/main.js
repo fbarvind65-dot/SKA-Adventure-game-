@@ -302,6 +302,7 @@ player.position.set(0,0,18);
 
 // Load the uploaded GLB character and use its embedded animations when available.
 let characterMixer = null;
+let proceduralRigBones = [];
 let characterActions = {};
 let activeCharacterAction = null;
 let characterAnimationState = '';
@@ -317,9 +318,17 @@ characterLoader.load(playerModelUrl, (gltf) => {
  character.scale.setScalar(scale);
  character.position.set(-center.x * scale, -bounds.min.y * scale, -center.z * scale);
  character.traverse((object) => {
-  if (object.isMesh) {
-   object.castShadow = true;
-   object.receiveShadow = true;
+  if (object.isMesh) { object.castShadow=true; object.receiveShadow=true; }
+  if(object.isBone){
+   const n=object.name.toLowerCase().replace(/[^a-z]/g,'');
+   let role='',side=1,amp=.6;
+   if(/left.*(upleg|thigh)/.test(n)){role='leg';side=1;}
+   else if(/right.*(upleg|thigh)/.test(n)){role='leg';side=-1;}
+   else if(/left.*(upperarm|arm)/.test(n)){role='arm';side=-1;amp=.4;}
+   else if(/right.*(upperarm|arm)/.test(n)){role='arm';side=1;amp=.4;}
+   else if(/left.*(lowerleg|calf)/.test(n)){role='knee';side=1;amp=.45;}
+   else if(/right.*(lowerleg|calf)/.test(n)){role='knee';side=-1;amp=.45;}
+   if(role)proceduralRigBones.push({bone:object,base:object.rotation.clone(),role,side,amp});
   }
  });
  player.add(character);
@@ -689,6 +698,17 @@ function animate(){
  if (characterMixer) {
   setCharacterAnimation(moving ? ((runHeld || keys.shift) ? 'run' : 'walk') : 'idle');
   characterMixer.update(dt);
+ }
+ if(proceduralRigBones.length){
+  const pace=(runHeld||keys.shift)?1.5:1;
+  const stance=playerStance==='prone'?.08:playerStance==='crouch'?.5:1;
+  for(const e of proceduralRigBones){const b=e.bone,r=e.base;
+   if(moving&&!isDriving){const wave=Math.sin(walkTime*pace+(e.side<0?Math.PI:0));
+    if(e.role==='leg')b.rotation.x=r.x+wave*e.amp*stance;
+    else if(e.role==='knee')b.rotation.x=r.x+Math.max(0,-wave)*e.amp*stance;
+    else b.rotation.x=r.x-wave*e.amp*stance;
+   }else b.rotation.x=THREE.MathUtils.damp(b.rotation.x,r.x,9,dt);
+  }
  }
  if(moving){
   const sprinting=runHeld||keys.shift;
