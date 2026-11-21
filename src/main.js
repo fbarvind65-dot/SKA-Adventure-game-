@@ -496,15 +496,12 @@ characterLoader.load(playerModelUrl, (gltf) => {
   characterMixer.addEventListener('finished',event=>{
    if(event.action===sitAction){
     isSitting=true;playerStance='crouch';sitStandBusy=false;
-    crouchButton.textContent='STAND';crouchButton.setAttribute('aria-label','Stand up');
-    crouchButton.title='Stand up';crouchButton.style.background='#426c8ddd';
+    updateStanceButtons();
    }
    if(event.action===standAction){
     isSitting=false;playerStance=pendingStanceAfterStand;sitStandBusy=false;
-    crouchButton.textContent='SIT';crouchButton.setAttribute('aria-label','Sit down');
-    crouchButton.title='Sit down';crouchButton.style.background='#17252cdd';
-    if(playerStance==='prone')setPlayerStance('prone');
-    else setCharacterAnimation('idle');
+    updateStanceButtons();
+    setCharacterAnimation('idle');
    }
   });
   console.info('Retargeted uploaded Sit/Stand clips to BIP01 rig:',sitClip.tracks.length,standClip.tracks.length);
