@@ -432,7 +432,7 @@ characterLoader.load(playerModelUrl, (gltf) => {
   const sourceHeight=sourceBounds.getSize(new THREE.Vector3()).y;
   const targetHeightNow=new THREE.Box3().setFromObject(character).getSize(new THREE.Vector3()).y;
   const translationScale=targetHeightNow/Math.max(sourceHeight,.001);
-  const retargetClip=sourceClip=>{
+  const retargetClip=(sourceClip,keepArms=true)=>{
    const clip=sourceClip.clone(),mappedTracks=[];
    for(const track of clip.tracks){
     const split=track.name.lastIndexOf('.');
@@ -442,6 +442,9 @@ characterLoader.load(playerModelUrl, (gltf) => {
     const sourceKey=normalizeBoneName(sourceName).replace(/^mixamorig/,'');
     const targetKey=sourceToTarget[sourceKey];
     if(!targetKey)continue;
+    // Sit-down animation folds the forearms/hands together unnaturally.
+    // Keep the character's existing relaxed arm pose during sitting.
+    if(!keepArms&&/^(leftarm|leftforearm|lefthand|rightarm|rightforearm|righthand|leftshoulder|rightshoulder)$/.test(sourceKey))continue;
     const sourceBone=sourceBones.get(sourceKey),targetBone=targetBones.get(targetKey);
     const targetBind=targetBindPose.get(targetKey);
     if(!sourceBone||!targetBone||!targetBind)continue;
@@ -480,7 +483,7 @@ characterLoader.load(playerModelUrl, (gltf) => {
    toast('Sit/Stand animation clips not found');
    return;
   }
-  const sitClip=retargetClip(sourceSit),standClip=retargetClip(sourceStand);
+  const sitClip=retargetClip(sourceSit,false),standClip=retargetClip(sourceStand);
   if(!sitClip.tracks.length||!standClip.tracks.length){
    console.warn('Sit/Stand retarget found no matching BIP01 tracks',sitClip.tracks.length,standClip.tracks.length);
    toast('Sit/Stand rig mapping failed');
