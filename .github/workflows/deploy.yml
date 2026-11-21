@@ -31,6 +31,32 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      - name: Diagnose character animation rig
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          function readGlb(path) {
+            const b=fs.readFileSync(path);
+            if (b.toString('utf8',0,4)!=='glTF') throw new Error('Not a GLB: '+path);
+            const n=b.readUInt32LE(12);
+            return JSON.parse(b.toString('utf8',20,20+n).trim());
+          }
+          const model=readGlb('src/Business_Female_02.glb');
+          const modelNames=new Set((model.nodes||[]).map(n=>n.name).filter(Boolean));
+          const relevant=[...modelNames].filter(n=>/bip|thigh|calf|foot|pelvis|hip|armature|root|leg/i.test(n));
+          console.log('PLAYER_NODE_COUNT',model.nodes?.length,'PLAYER_SKINS',(model.skins||[]).length);
+          console.log('PLAYER_RIG_NAMES',JSON.stringify(relevant));
+          for (const path of ['src/f_idle_neutral_01.glb','src/f_walk_neutral_01.glb']) {
+            const g=readGlb(path);
+            const tracks=[];
+            for (const a of g.animations||[]) for (const c of a.channels||[]) {
+              tracks.push(g.nodes?.[c.target.node]?.name||'NO_NODE');
+            }
+            const unique=[...new Set(tracks)];
+            const matched=unique.filter(n=>modelNames.has(n));
+            console.log('ANIMATION',path,'NODES',unique.length,'MATCHED',matched.length,'MISSING',JSON.stringify(unique.filter(n=>!modelNames.has(n))));
+          }
+          NODE
       - name: Build game
         run: npm run build
 
