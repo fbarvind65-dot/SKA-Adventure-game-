@@ -812,21 +812,22 @@ function setPlayerStance(next){
  updateStanceButtons();
 }
 function playSitDown(){
- // Enter the low crouch using the uploaded sit-down pose (arm tracks are
- // excluded during retargeting), then hold its final frame as crouch idle.
- if(activeCharacterAction&&activeCharacterAction!==sitAction)activeCharacterAction.fadeOut(.1);
- Object.values(characterActions).forEach(action=>{if(action)action.fadeOut(.1);});
+ // Use the crouch-walk animation itself as the held low crouch pose.
+ // The sit-down clip is a seated transition and makes the player sit upright.
+ if(activeCharacterAction)activeCharacterAction.fadeOut(.12);
+ Object.values(characterActions).forEach(action=>{if(action)action.fadeOut(.12);});
+ if(sitAction)sitAction.stop();
  if(standAction)standAction.stop();
- if(crouchWalkAction)crouchWalkAction.stop();
- playerStance='crouch';isSitting=false;sitStandBusy=!!sitAction;
+ playerStance='crouch';isSitting=true;sitStandBusy=false;
  activeCharacterAction=null;characterAnimationState='';
  updateStanceButtons();
- if(sitAction){
-  sitAction.stopFading();sitAction.enabled=true;sitAction.paused=false;
-  sitAction.reset().setEffectiveWeight(1).fadeIn(.12).play();
-  activeCharacterAction=sitAction;characterAnimationState='crouch-enter';
+ if(crouchWalkAction){
+  crouchWalkAction.stopFading();crouchWalkAction.enabled=true;
+  crouchWalkAction.reset();crouchWalkAction.time=Math.min(.22,crouchWalkAction.getClip().duration*.18);
+  crouchWalkAction.paused=true;crouchWalkAction.setEffectiveWeight(1).play();
+  activeCharacterAction=crouchWalkAction;characterAnimationState='crouch-idle';
  }else{
-  sitStandBusy=false;isSitting=true;setCharacterAnimation('idle');
+  setCharacterAnimation('idle');
  }
 }
 function playStandUp(nextStance='stand'){
@@ -1114,14 +1115,14 @@ if(pickupLabel.style.display==='block'){const p=roadPickup.position.clone();p.y+
     crouchWalkAction.enabled=true;crouchWalkAction.setEffectiveWeight(1);
     activeCharacterAction=crouchWalkAction;characterAnimationState='crouch-walk';
    }else{
-    if(crouchWalkAction)crouchWalkAction.stop();
-    if(activeCharacterAction===crouchWalkAction)activeCharacterAction=null;
-    // Freeze the final squat pose; do not switch to standing idle.
-    if(sitAction&&isSitting){
-     sitAction.stopFading();sitAction.enabled=true;sitAction.paused=true;
-     sitAction.time=sitAction.getClip().duration;
-     sitAction.setEffectiveWeight(1);sitAction.play();
-     activeCharacterAction=sitAction;characterAnimationState='crouch-idle';
+    // Hold a frame of the authored crouch-walk clip while stopped. This keeps
+    // hips, torso and bent legs low instead of blending back to standing idle.
+    if(crouchWalkAction){
+     crouchWalkAction.stopFading();crouchWalkAction.enabled=true;
+     crouchWalkAction.paused=true;
+     crouchWalkAction.time=Math.min(.22,crouchWalkAction.getClip().duration*.18);
+     crouchWalkAction.setEffectiveWeight(1).play();
+     activeCharacterAction=crouchWalkAction;characterAnimationState='crouch-idle';
     }else{
      setCharacterAnimation('idle');characterAnimationState='crouch-idle';
     }
