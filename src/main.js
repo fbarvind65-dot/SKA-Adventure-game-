@@ -5,6 +5,7 @@ import playerModelUrl from './Business_Female_02.glb?url';
 import idleAnimationUrl from './f_idle_neutral_01.glb?url';
 import walkAnimationUrl from './f_walk_neutral_01.glb?url';
 import runAnimationUrl from './f_run_neutral_01.glb?url';
+import sitStandBundleUrl from './Business_Female_02-rigged-animated.glb?url';
 
 const app = document.querySelector('#app');
 document.body.style.cssText = 'margin:0;overflow:hidden;background:#9bb8c7;font-family:Arial,sans-serif;overscroll-behavior:none;touch-action:none';
@@ -306,11 +307,12 @@ player.position.set(0,0,18);
 // Load the uploaded GLB character and use its embedded animations when available.
 let characterMixer = null;
 let proceduralRigBones = [];
-let neutralHeadBones = [];
 let characterActions = {};
 let activeCharacterAction = null;
 let characterAnimationState = '';
-let crouchPoseBlend=0, pronePoseBlend=0, stanceAfterJump='stand';
+let pronePoseBlend=0;
+let sitAction=null, standAction=null, crouchWalkAction=null;
+let sitStandBusy=false, isSitting=false, pendingStanceAfterStand='stand';
 const characterLoader = new GLTFLoader();
 characterLoader.setMeshoptDecoder(MeshoptDecoder);
 characterLoader.load(playerModelUrl, (gltf) => {
@@ -322,19 +324,15 @@ characterLoader.load(playerModelUrl, (gltf) => {
  const scale = targetHeight / Math.max(size.y, 0.001);
  character.scale.setScalar(scale);
  character.position.set(-center.x * scale, -bounds.min.y * scale, -center.z * scale);
+ const targetBones=new Map(),targetBindPose=new Map();
+ const normalizeBoneName=name=>name.toLowerCase().replace(/[^a-z0-9]/g,'');
  character.traverse((object) => {
   if (object.isMesh) { object.castShadow=true; object.receiveShadow=true; }
   if(object.isBone){
-   const n=object.name.toLowerCase().replace(/[^a-z0-9]/g,'');
-   // Preserve the full upper-body bind pose while sneaking. A walk/run
-   // clip was rotating the head and shoulders into a sideways photo-like pose.
-   if(/head|neck|spine|clav|upperarm|forearm|hand/.test(n)){
-    neutralHeadBones.push({bone:object,base:object.quaternion.clone()});
-    if(/head|neck/.test(n))return;
-   }
+   const n=normalizeBoneName(object.name);
+   const targetKey=n.replace(/^bip01/,'');
+   if(targetKey)targetBones.set(targetKey,object);
    let role='',side=1,amp=.55;
-   // Use only the main spine joint. Rotating Spine1/Spine2 as well made the
-   // upper body twist and caused the head to look sideways during SIT.
    if(/hips|pelvis/.test(n)){role='hips';amp=.18;}
    else if(/^(bip01)?spine$/.test(n)){role='spine';amp=.08;}
    else if(/bip01lthigh$|leftupleg$|leftthigh$|lthigh$/.test(n)){role='leg';side=1;amp=.52;}
@@ -345,10 +343,19 @@ characterLoader.load(playerModelUrl, (gltf) => {
    else if(/bip01rupperarm$|rightupperarm$|rupperarm$|rightarm$/.test(n)){role='arm';side=-1;amp=.3;}
    else if(/bip01lforearm$|leftforearm$|lforearm$/.test(n)){role='forearm';side=1;amp=.2;}
    else if(/bip01rforearm$|rightforearm$|rforearm$/.test(n)){role='forearm';side=-1;amp=.2;}
-   // Head and neck deliberately remain untouched by the procedural stance.
    if(role)proceduralRigBones.push({bone:object,base:object.rotation.clone(),role,side,amp,appliedOffset:0});
   }
  });
+ character.updateMatrixWorld(true);
+ for(const [key,bone] of targetBones){
+  const parentWorldQuaternion=bone.parent?bone.parent.getWorldQuaternion(new THREE.Quaternion()):new THREE.Quaternion();
+  targetBindPose.set(key,{
+   bone,
+   position:bone.position.clone(),
+   worldQuaternion:bone.getWorldQuaternion(new THREE.Quaternion()),
+   parentWorldQuaternion
+  });
+ }
  player.add(character);
  // Load the separately uploaded idle animation onto the character rig.
  characterLoader.load(idleAnimationUrl, (idleGltf) => {
@@ -371,6 +378,16 @@ characterLoader.load(playerModelUrl, (gltf) => {
   }
   if (!characterMixer) characterMixer = new THREE.AnimationMixer(character);
   characterActions.walk = characterMixer.clipAction(walkClip);
+  const crouchWalkClip=walkClip.clone();
+  crouchWalkClip.tracks=crouchWalkClip.tracks.filter(track=>{
+   const nodeName=normalizeBoneName(track.name.slice(0,track.name.lastIndexOf('.'))).replace(/^bip01/,'');
+   return /^(lthigh|rthigh|lcalf|rcalf|lfoot|rfoot|ltoe0|rtoe0)$/.test(nodeName);
+  });
+  if(crouchWalkClip.tracks.length){
+   crouchWalkAction=characterMixer.clipAction(crouchWalkClip);
+   crouchWalkAction.setLoop(THREE.LoopRepeat,Infinity);
+   crouchWalkAction.timeScale=.62;
+  }
   if (characterAnimationState === 'walk') setCharacterAnimation('walk');
  }, undefined, (error) => console.warn('Walk animation GLB could not load:', error));
  // Load the uploaded run clip separately; keep the restored idle and walk setup unchanged.
@@ -394,6 +411,104 @@ characterLoader.load(playerModelUrl, (gltf) => {
   characterActions.run = runAction;
   if (characterAnimationState === 'run') setCharacterAnimation('run');
  }, undefined, (error) => console.warn('Run animation GLB could not load:', error));
+ // Retarget the uploaded Mixamo Sit/Stand clips onto the game's BIP01 character.
+ characterLoader.load(sitStandBundleUrl,(bundle)=>{
+  bundle.scene.updateMatrixWorld(true);
+  const sourceBones=new Map();
+  bundle.scene.traverse(object=>{
+   if(object.isBone){
+    const key=normalizeBoneName(object.name).replace(/^mixamorig/,'');
+    sourceBones.set(key,object);
+   }
+  });
+  const sourceToTarget={
+   hips:'pelvis',spine:'spine',spine2:'spine2',
+   leftarm:'lupperarm',leftforearm:'lforearm',lefthand:'lhand',
+   rightarm:'rupperarm',rightforearm:'rforearm',righthand:'rhand',
+   leftupleg:'lthigh',leftleg:'lcalf',leftfoot:'lfoot',lefttoebase:'ltoe0',
+   rightupleg:'rthigh',rightleg:'rcalf',rightfoot:'rfoot',righttoebase:'rtoe0'
+  };
+  const sourceBounds=new THREE.Box3().setFromObject(bundle.scene);
+  const sourceHeight=sourceBounds.getSize(new THREE.Vector3()).y;
+  const targetHeightNow=new THREE.Box3().setFromObject(character).getSize(new THREE.Vector3()).y;
+  const translationScale=targetHeightNow/Math.max(sourceHeight,.001);
+  const retargetClip=sourceClip=>{
+   const clip=sourceClip.clone(),mappedTracks=[];
+   for(const track of clip.tracks){
+    const split=track.name.lastIndexOf('.');
+    if(split<1)continue;
+    const property=track.name.slice(split+1);
+    const sourceName=track.name.slice(0,split);
+    const sourceKey=normalizeBoneName(sourceName).replace(/^mixamorig/,'');
+    const targetKey=sourceToTarget[sourceKey];
+    if(!targetKey)continue;
+    const sourceBone=sourceBones.get(sourceKey),targetBone=targetBones.get(targetKey);
+    const targetBind=targetBindPose.get(targetKey);
+    if(!sourceBone||!targetBone||!targetBind)continue;
+    const sourceParentWorld=sourceBone.parent?sourceBone.parent.getWorldQuaternion(new THREE.Quaternion()):new THREE.Quaternion();
+    const targetParentInverse=targetBind.parentWorldQuaternion.clone().invert();
+    if(property==='quaternion'&&track.values.length%4===0){
+     const sourceRestWorld=sourceBone.getWorldQuaternion(new THREE.Quaternion());
+     const inverseSourceRest=sourceRestWorld.clone().invert();
+     for(let k=0;k<track.values.length;k+=4){
+      const animatedLocal=new THREE.Quaternion(track.values[k],track.values[k+1],track.values[k+2],track.values[k+3]);
+      const animatedWorld=sourceParentWorld.clone().multiply(animatedLocal);
+      const worldDelta=animatedWorld.multiply(inverseSourceRest);
+      const targetWorld=worldDelta.multiply(targetBind.worldQuaternion);
+      const targetLocal=targetParentInverse.clone().multiply(targetWorld);
+      track.values[k]=targetLocal.x;track.values[k+1]=targetLocal.y;track.values[k+2]=targetLocal.z;track.values[k+3]=targetLocal.w;
+     }
+    }else if(property==='position'&&track.values.length%3===0){
+     for(let k=0;k<track.values.length;k+=3){
+      const deltaLocal=new THREE.Vector3(track.values[k],track.values[k+1],track.values[k+2]).sub(sourceBone.position);
+      const deltaWorld=deltaLocal.applyQuaternion(sourceParentWorld).multiplyScalar(translationScale);
+      const deltaTarget=deltaWorld.applyQuaternion(targetParentInverse);
+      const position=targetBind.position.clone().add(deltaTarget);
+      track.values[k]=position.x;track.values[k+1]=position.y;track.values[k+2]=position.z;
+     }
+    }else continue;
+    track.name=THREE.PropertyBinding.sanitizeNodeName(targetBone.name)+'.'+property;
+    mappedTracks.push(track);
+   }
+   clip.tracks=mappedTracks;
+   return clip;
+  };
+  const sourceSit=bundle.animations.find(clip=>/^sit down$/i.test(clip.name));
+  const sourceStand=bundle.animations.find(clip=>/^stand up$/i.test(clip.name));
+  if(!sourceSit||!sourceStand){
+   console.warn('Uploaded Sit/Stand clips not found:',bundle.animations.map(clip=>clip.name));
+   toast('Sit/Stand animation clips not found');
+   return;
+  }
+  const sitClip=retargetClip(sourceSit),standClip=retargetClip(sourceStand);
+  if(!sitClip.tracks.length||!standClip.tracks.length){
+   console.warn('Sit/Stand retarget found no matching BIP01 tracks',sitClip.tracks.length,standClip.tracks.length);
+   toast('Sit/Stand rig mapping failed');
+   return;
+  }
+  if(!characterMixer)characterMixer=new THREE.AnimationMixer(character);
+  sitAction=characterMixer.clipAction(sitClip);
+  standAction=characterMixer.clipAction(standClip);
+  for(const action of [sitAction,standAction]){
+   action.setLoop(THREE.LoopOnce,1);
+   action.clampWhenFinished=true;
+  }
+  characterMixer.addEventListener('finished',event=>{
+   if(event.action===sitAction){
+    isSitting=true;playerStance='crouch';sitStandBusy=false;
+    crouchButton.textContent='STAND';crouchButton.setAttribute('aria-label','Stand up');
+    crouchButton.title='Stand up';crouchButton.style.background='#426c8ddd';
+   }
+   if(event.action===standAction){
+    isSitting=false;playerStance=pendingStanceAfterStand;sitStandBusy=false;
+    crouchButton.textContent='SIT';crouchButton.setAttribute('aria-label','Sit down');
+    crouchButton.title='Sit down';crouchButton.style.background='#17252cdd';
+    if(playerStance==='prone')setPlayerStance('prone');
+    else setCharacterAnimation('idle');
+   }
+  });
+  console.info('Retargeted uploaded Sit/Stand clips to BIP01 rig:',sitClip.tracks.length,standClip.tracks.length);
+ },undefined,error=>console.warn('Sit/Stand animation bundle failed to load:',error));
  // Use the uploaded model instead of the procedural placeholder.
  torso.visible = false;
  if (gltf.animations && gltf.animations.length) {
@@ -570,9 +685,7 @@ exitVehicleButton.style.right='50%'; exitVehicleButton.style.transform='translat
 
 let jumpVelocity=0, jumpActive=false, isDriving=false, activeVehicle=null, nearbyVehicle=null;
 let playerStance='stand';
-function setPlayerStance(next){
- playerStance=playerStance===next?'stand':next;
- player.scale.set(1,1,1);
+function updateStanceButtons(){
  crouchButton.textContent=playerStance==='crouch'?'STAND':'SIT';
  crouchButton.style.background=playerStance==='crouch'?'#426c8ddd':'#17252cdd';
  crouchButton.setAttribute('aria-label',playerStance==='crouch'?'Stand up':'Sit down');
@@ -581,6 +694,39 @@ function setPlayerStance(next){
  proneButton.style.background=playerStance==='prone'?'#426c8ddd':'#17252cdd';
  proneButton.setAttribute('aria-label',playerStance==='prone'?'Wake up':'Lie down');
  proneButton.title=playerStance==='prone'?'Wake up':'Lie down';
+}
+function setPlayerStance(next){
+ playerStance=playerStance===next?'stand':next;
+ player.scale.set(1,1,1);
+ updateStanceButtons();
+}
+function playSitDown(){
+ if(sitStandBusy)return;
+ if(!sitAction){toast('Sit animation is still loading');return;}
+ sitStandBusy=true;
+ if(crouchWalkAction)crouchWalkAction.stop();
+ if(activeCharacterAction)activeCharacterAction.fadeOut(.14);
+ sitAction.reset().setEffectiveWeight(1).fadeIn(.14).play();
+ activeCharacterAction=sitAction;
+ characterAnimationState='sit-transition';
+ crouchButton.textContent='SITTING…';
+}
+function playStandUp(nextStance='stand'){
+ if(sitStandBusy)return;
+ if(!standAction){toast('Stand animation is still loading');return;}
+ pendingStanceAfterStand=nextStance;
+ sitStandBusy=true;
+ if(crouchWalkAction)crouchWalkAction.stop();
+ if(activeCharacterAction&&activeCharacterAction!==standAction)activeCharacterAction.fadeOut(.14);
+ if(sitAction)sitAction.fadeOut(.14);
+ standAction.reset().setEffectiveWeight(1).fadeIn(.14).play();
+ activeCharacterAction=standAction;
+ characterAnimationState='stand-transition';
+ crouchButton.textContent='GETTING UP…';
+}
+function toggleSitStand(){
+ if(isSitting)playStandUp('stand');
+ else playSitDown();
 }
 let firstPerson=false, mapOpen=false;
 const mapPanel=document.createElement('div');
@@ -613,15 +759,18 @@ proneButton.textContent='SLEEP';
 proneButton.style.font='900 13px Arial,sans-serif';
 proneButton.style.borderRadius='18px';
 wireButtonAction(crouchButton,()=>{
- if(!isDriving&&!jumpActive)setPlayerStance('crouch');
+ if(!isDriving&&!jumpActive)toggleSitStand();
 });
 wireButtonAction(proneButton,()=>{
- if(!isDriving&&!jumpActive)setPlayerStance('prone');
+ if(!isDriving&&!jumpActive){
+  if(isSitting)playStandUp('prone');
+  else setPlayerStance('prone');
+ }
 });
 wireButtonAction(jumpButton,()=>{
  if(!jumpActive&&!isDriving){
-  stanceAfterJump=playerStance;
-  setPlayerStance('stand');
+  if(isSitting)playStandUp('stand');
+  else if(playerStance!=='stand')setPlayerStance('stand');
   jumpVelocity=6.2;
   jumpActive=true;
  }
@@ -635,7 +784,7 @@ wireButtonAction(mapButton,()=>{
  mapOpen=!mapOpen; mapPanel.style.display=mapOpen?'block':'none';
 });
 wireButtonAction(resetButton,()=>{
- cameraYaw=0;cameraPitch=.28;cameraDistance=0.5;firstPerson=false;
+ cameraYaw=0;cameraPitch=.24;cameraDistance=8.5;firstPerson=false;
  viewButton.setAttribute('aria-label','First-person view');
  toast('Camera reset');
 });
@@ -742,7 +891,7 @@ lobbyScreen.querySelector('#ska-lobby-play').addEventListener('click',async()=>{
  vehicles[0].position.copy(lobbyVehicleOriginal);
  player.position.set(0,0,18);
  hudRoot.style.display='block'; hud.style.display='block';
- cameraYaw=0;cameraPitch=.28;cameraDistance=0.5;
+ cameraYaw=0;cameraPitch=.24;cameraDistance=8.5;
  updateHudLayout();
 });
 
@@ -752,13 +901,14 @@ const lookTarget=new THREE.Vector3();
 let walkTime=0;
 
 // 360-degree camera: drag anywhere on the world view to orbit around the player.
-let cameraYaw=0, cameraPitch=0.16, cameraDistance=0.5;
+let cameraYaw=0, cameraPitch=0.24, cameraDistance=8.5;
 let cameraPointer=null, lastPointerX=0, lastPointerY=0;
 renderer.domElement.addEventListener('pointerdown',e=>{
- cameraPointer=e.pointerId; lastPointerX=e.clientX; lastPointerY=e.clientY;
- renderer.domElement.setPointerCapture(e.pointerId);
+ if(!gameStarted||cameraPointer!==null)return;
+ e.preventDefault();
+ cameraPointer=e.pointerId;lastPointerX=e.clientX;lastPointerY=e.clientY;
 });
-renderer.domElement.addEventListener('pointermove',e=>{
+window.addEventListener('pointermove',e=>{
  if(cameraPointer!==e.pointerId)return;
  const dx=e.clientX-lastPointerX,dy=e.clientY-lastPointerY;
  lastPointerX=e.clientX;lastPointerY=e.clientY;
@@ -766,8 +916,8 @@ renderer.domElement.addEventListener('pointermove',e=>{
  cameraPitch=THREE.MathUtils.clamp(cameraPitch+dy*.006,-.12,1.05);
 });
 function stopCameraDrag(e){if(cameraPointer===e.pointerId)cameraPointer=null}
-renderer.domElement.addEventListener('pointerup',stopCameraDrag);
-renderer.domElement.addEventListener('pointercancel',stopCameraDrag);
+window.addEventListener('pointerup',stopCameraDrag);
+window.addEventListener('pointercancel',stopCameraDrag);
 renderer.domElement.addEventListener('wheel',e=>{
  cameraDistance=THREE.MathUtils.clamp(cameraDistance+e.deltaY*.012,6.5,18);
 },{passive:true});
@@ -797,46 +947,37 @@ function animate(){
  if(jumpActive&&!isDriving){
   player.position.y+=jumpVelocity*dt;
   jumpVelocity-=15*dt;
-  if(player.position.y<=0){
-    player.position.y=0;jumpVelocity=0;jumpActive=false;
-    if(stanceAfterJump!=='stand')setPlayerStance(stanceAfterJump);
-   }
+  if(player.position.y<=0){player.position.y=0;jumpVelocity=0;jumpActive=false;}
  }
- // Remove the prior procedural stance offset before advancing the GLB animation.
- // This keeps crouch posture from accumulating and lets walk cycles continue.
+ // Clear last frame's prone overlay before the animation mixer advances.
  for(const e of proceduralRigBones){
   if(e.appliedOffset){e.bone.rotation.x-=e.appliedOffset;e.appliedOffset=0;}
  }
  if(characterMixer){
-  const sprinting=playerStance==='stand'&&(keys.shift||joystickStrength>0.72);
-  const animationState=playerStance==='stand'?(moving?(sprinting?'run':'walk'):'idle'):'idle';
-  setCharacterAnimation(animationState);
+  if(sitStandBusy){
+   if(crouchWalkAction)crouchWalkAction.stop();
+  }else if(isSitting&&playerStance==='crouch'){
+   if(moving&&crouchWalkAction){
+    if(!crouchWalkAction.isRunning())crouchWalkAction.reset().play();
+    crouchWalkAction.enabled=true;crouchWalkAction.setEffectiveWeight(.18);
+   }else if(crouchWalkAction)crouchWalkAction.stop();
+  }else{
+   if(crouchWalkAction)crouchWalkAction.stop();
+   const sprinting=keys.shift||joystickStrength>0.72;
+   setCharacterAnimation(moving?(sprinting?'run':'walk'):'idle');
+  }
   characterMixer.update(dt);
  }
- crouchPoseBlend=THREE.MathUtils.damp(crouchPoseBlend,playerStance==='crouch'?1:0,8,dt);
  pronePoseBlend=THREE.MathUtils.damp(pronePoseBlend,playerStance==='prone'?1:0,8,dt);
- // Keep the head facing forward while sneaking or lying down, even if a
- // locomotion clip contains a head-turn track.
- if(crouchPoseBlend>.015||pronePoseBlend>.015){
-  for(const entry of neutralHeadBones)entry.bone.quaternion.copy(entry.base);
- }
- if(proceduralRigBones.length){
+ if(proceduralRigBones.length&&playerStance==='prone'){
   for(const e of proceduralRigBones){
-   let crouchPose=0,pronePose=0;
-   if(e.role==='hips'){crouchPose=.12;pronePose=.12;}
-   else if(e.role==='leg'){crouchPose=.52;pronePose=.82;}
-   else if(e.role==='knee'){crouchPose=-.92;pronePose=-.62;}
-   else if(e.role==='spine'){crouchPose=-.035;pronePose=-.42;}
-   else if(e.role==='arm'){crouchPose=-.06;}
-   else if(e.role==='forearm'){crouchPose=-.12;}
-   let gaitOffset=0;
-   if(playerStance==='crouch'&&moving){
-    if(e.role==='leg')gaitOffset=Math.sin(walkTime*.75)*.16*e.side;
-    if(e.role==='knee')gaitOffset=-Math.max(0,Math.sin(walkTime*.75+(e.side<0?Math.PI:0)))*.12;
-   }
-   const offset=crouchPose*crouchPoseBlend+pronePose*pronePoseBlend+gaitOffset*crouchPoseBlend;
-   e.bone.rotation.x+=offset;
-   e.appliedOffset=offset;
+   let pose=0;
+   if(e.role==='hips')pose=.12;
+   else if(e.role==='leg')pose=.82;
+   else if(e.role==='knee')pose=-.62;
+   else if(e.role==='spine')pose=-.42;
+   e.bone.rotation.x+=pose*pronePoseBlend;
+   e.appliedOffset=pose*pronePoseBlend;
   }
  }
  if(moving){
@@ -898,7 +1039,7 @@ function animate(){
   player.position.z+Math.cos(cameraYaw)*horizontalDistance
  );
  camera.position.lerp(desiredCamera,1-Math.exp(-4*dt));
- lookTarget.set(player.position.x,firstPerson?1.55:1.25,player.position.z-1.4);
+ lookTarget.set(player.position.x,player.position.y+(firstPerson?1.55:1.25),player.position.z);
  camera.lookAt(lookTarget);
  renderer.render(scene,camera);
 }
