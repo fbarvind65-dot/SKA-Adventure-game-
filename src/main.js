@@ -305,11 +305,47 @@ player.position.set(0,0,18);
 // Load the uploaded GLB character and use its embedded animations when available.
 let characterMixer = null;
 let proceduralRigBones = [];
+let characterBindPose = new Map();
 let characterActions = {};
 let activeCharacterAction = null;
 let characterAnimationState = '';
 const characterLoader = new GLTFLoader();
 characterLoader.setMeshoptDecoder(MeshoptDecoder);
+
+// Correct source animation rest rotations to the player's actual bind pose.
+function retargetAnimationClip(clip, sourceRoot, targetBindPose) {
+ const tracks = clip.tracks.map((track) => {
+  const split = track.name.lastIndexOf('.');
+  if (split < 0) return track.clone();
+  const property = track.name.slice(split + 1);
+  if (property !== 'quaternion' && property !== 'position') return track.clone();
+  const nodeName = track.name.slice(0, split).split('/').pop();
+  const source = sourceRoot.getObjectByName(nodeName);
+  const target = targetBindPose.get(nodeName);
+  if (!source || !target) return track.clone();
+  const corrected = track.clone();
+  const values = track.values.slice();
+  if (property === 'quaternion' && values.length % 4 === 0) {
+   const offset = target.quaternion.clone().multiply(source.quaternion.clone().invert());
+   for (let i = 0; i < values.length; i += 4) {
+    const q = new THREE.Quaternion(values[i], values[i+1], values[i+2], values[i+3]);
+    q.premultiply(offset).normalize();
+    values[i]=q.x; values[i+1]=q.y; values[i+2]=q.z; values[i+3]=q.w;
+   }
+   corrected.values = values;
+  } else if (property === 'position' && values.length % 3 === 0) {
+   for (let i=0;i<values.length;i+=3) {
+    values[i] += target.position.x-source.position.x;
+    values[i+1] += target.position.y-source.position.y;
+    values[i+2] += target.position.z-source.position.z;
+   }
+   corrected.values = values;
+  }
+  return corrected;
+ });
+ return new THREE.AnimationClip(clip.name+'_retargeted',clip.duration,tracks,clip.blendMode);
+}
+
 characterLoader.load(playerModelUrl, (gltf) => {
  const character = gltf.scene;
  const bounds = new THREE.Box3().setFromObject(character);
@@ -320,6 +356,7 @@ characterLoader.load(playerModelUrl, (gltf) => {
  character.scale.setScalar(scale);
  character.position.set(-center.x * scale, -bounds.min.y * scale, -center.z * scale);
  character.traverse((object) => {
+  if (object.name) characterBindPose.set(object.name,{quaternion:object.quaternion.clone(),position:object.position.clone()});
   if (object.isMesh) { object.castShadow=true; object.receiveShadow=true; }
   if(object.isBone){
    const n=object.name.toLowerCase().replace(/[^a-z0-9]/g,'');
@@ -347,7 +384,8 @@ characterLoader.load(playerModelUrl, (gltf) => {
    return;
   }
   if (!characterMixer) characterMixer = new THREE.AnimationMixer(character);
-  const idleAction = characterMixer.clipAction(idleClip);
+  const retargetedIdle = retargetAnimationClip(idleClip,idleGltf.scene,characterBindPose);
+  const idleAction = characterMixer.clipAction(retargetedIdle);
   characterActions.idle = idleAction;
   if (characterAnimationState === 'idle' || !activeCharacterAction) setCharacterAnimation('idle');
  }, undefined, (error) => console.warn('Idle animation GLB could not load:', error));
@@ -359,7 +397,8 @@ characterLoader.load(playerModelUrl, (gltf) => {
    return;
   }
   if (!characterMixer) characterMixer = new THREE.AnimationMixer(character);
-  characterActions.walk = characterMixer.clipAction(walkClip);
+  const retargetedWalk = retargetAnimationClip(walkClip,walkGltf.scene,characterBindPose);
+  characterActions.walk = characterMixer.clipAction(retargetedWalk);
   if (characterAnimationState === 'walk') setCharacterAnimation('walk');
  }, undefined, (error) => console.warn('Walk animation GLB could not load:', error));
  // Use the uploaded model instead of the procedural placeholder.
