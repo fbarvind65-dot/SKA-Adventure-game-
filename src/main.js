@@ -941,7 +941,7 @@ app.appendChild(hint);
 
 
 /* Map 2: separate wildlands world. Map 1 objects are preserved and toggled, not rebuilt. */
-const map1WorldObjects=scene.children.filter(object=>object!==player&&!vehicles.includes(object)&&object!==roadPickup);
+const map1WorldObjects=scene.children.filter(object=>object!==player&&!object.isLight&&!vehicles.includes(object)&&object!==roadPickup);
 const map2World=new THREE.Group();
 map2World.name='SKA_MAP_02_WILDLANDS';
 map2World.visible=false;
@@ -1196,6 +1196,7 @@ if(pickupLabel.style.display==='block'){const p=roadPickup.position.clone();p.y+
  if(!isDriving){
   let nearest=5.2;
   for(const vehicle of vehicles){
+   if(!vehicle.visible)continue;
    const distance=Math.hypot(player.position.x-vehicle.position.x,player.position.z-vehicle.position.z);
    if(distance<nearest){nearest=distance;nearbyVehicle=vehicle;}
   }
