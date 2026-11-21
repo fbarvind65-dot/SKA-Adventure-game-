@@ -5,11 +5,11 @@ import playerModelUrl from './Business_Female_01.glb?url';
 
 const app = document.querySelector('#app');
 document.body.style.cssText = 'margin:0;overflow:hidden;background:#9bb8c7;font-family:Arial,sans-serif;overscroll-behavior:none;touch-action:none';
-app.style.cssText = 'position:fixed;inset:0;width:100%;height:100dvh;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none';
+app.style.cssText = 'position:fixed;inset:0;width:100%;height:100dvh;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none;z-index:1';
 const hudRoot=document.createElement('div');
 hudRoot.id='ska-mobile-hud';
-hudRoot.style.cssText='position:absolute;inset:0;width:100%;height:100%;z-index:2147483647;pointer-events:none;overflow:visible;contain:none;isolation:isolate;';
-app.appendChild(hudRoot);
+hudRoot.style.cssText='position:fixed;inset:0;width:100vw;height:100dvh;z-index:2147483647;pointer-events:none;overflow:visible;contain:none;isolation:isolate;';
+document.body.appendChild(hudRoot);
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x9eb8c8);
 scene.fog = new THREE.FogExp2(0x9eb8c8, 0.0028);
@@ -34,7 +34,7 @@ let landscapeRequested=false;
 async function requestLandscape(){
  try{
   if(!document.fullscreenElement){
-   const target=app.requestFullscreen?app:document.documentElement;
+   const target=document.documentElement;
    if(target.requestFullscreen) await target.requestFullscreen();
   }
  }catch(error){ console.info('Fullscreen request was not accepted:',error); }
@@ -45,8 +45,11 @@ async function requestLandscape(){
 }
 function updateHudLayout(){
  const landscape=window.innerWidth>window.innerHeight;
+ hudRoot.style.position='fixed';
+ hudRoot.style.left='0px';hudRoot.style.top='0px';
  hudRoot.style.width=window.innerWidth+'px';
  hudRoot.style.height=window.innerHeight+'px';
+ hudRoot.style.zIndex='2147483647';
  hudRoot.dataset.orientation=landscape?'landscape':'portrait';
 }
 window.addEventListener('resize',updateHudLayout);
