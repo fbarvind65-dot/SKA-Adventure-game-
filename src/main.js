@@ -1123,20 +1123,9 @@ if(pickupLabel.style.display==='block'){const p=roadPickup.position.clone();p.y+
  const punchStrength=punchTimer>0?Math.sin(Math.min(1,punchTimer/.18)*Math.PI/2)*Math.min(1,punchTimer/.12):0;
  const crouchWalking=playerStance==='crouch'&&moving&&!sitStandBusy;
  crouchWalkPoseBlend=THREE.MathUtils.damp(crouchWalkPoseBlend,crouchWalking?1:0,7,dt);
- // Low, forward-leaning stealth gait: bend at hips/spine and keep arms loose,
- // while the filtered walk clip supplies alternating leg steps.
- // Punch motion now comes from the uploaded cross-right GLB clip, not a procedural arm swing.
- if(proceduralRigBones.length&&crouchWalkPoseBlend>.001){
-  for(const e of proceduralRigBones){
-   let pose=0;
-   if(e.role==='hips')pose=.52;
-   else if(e.role==='spine')pose=.38;
-   else if(e.role==='arm')pose=-.24+Math.sin(walkTime*.85)*.08*e.side;
-   else if(e.role==='forearm')pose=-.24;
-   e.bone.rotation.x+=pose*crouchWalkPoseBlend;
-   e.appliedOffset+=pose*crouchWalkPoseBlend;
-  }
- }
+ // The uploaded crouch-walk GLB already contains its crouched body pose.
+ // Do not add a second procedural hips/spine bend here: stacking both poses
+ // was forcing the character into an exaggerated forward lean.
  if(proceduralRigBones.length&&playerStance==='prone'){
   for(const e of proceduralRigBones){
    let pose=0;
