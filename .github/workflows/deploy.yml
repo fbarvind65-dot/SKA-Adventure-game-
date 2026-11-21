@@ -35,14 +35,13 @@ jobs:
         run: |
           node --input-type=module <<'NODE'
           import fs from 'node:fs';
+          import * as THREE from 'three';
           import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
           await MeshoptDecoder.ready;
-          function readGlb(path) {
-            const b=fs.readFileSync(path);
-            const jsonLength=b.readUInt32LE(12);
-            return {b,j:JSON.parse(b.toString('utf8',20,20+jsonLength).trim()),binStart:28+jsonLength};
-          }
-          const {b,j,binStart}=readGlb('src/f_walk_neutral_01.glb');
+          const b=fs.readFileSync('src/f_walk_neutral_01.glb');
+          const jsonLength=b.readUInt32LE(12);
+          const j=JSON.parse(b.toString('utf8',20,20+jsonLength).trim());
+          const binStart=28+jsonLength;
           async function viewBytes(index) {
             const v=j.bufferViews[index], ext=v.extensions?.EXT_meshopt_compression;
             if (!ext) return b.subarray(binStart+(v.byteOffset||0),binStart+(v.byteOffset||0)+v.byteLength);
@@ -54,21 +53,23 @@ jobs:
           async function accessor(index) {
             const a=j.accessors[index],v=j.bufferViews[a.bufferView],data=await viewBytes(a.bufferView);
             const width=({SCALAR:1,VEC2:2,VEC3:3,VEC4:4})[a.type],stride=v.extensions?.EXT_meshopt_compression?.byteStride||v.byteStride||width*4;
-            const rows=[];
-            for(let i=0;i<a.count;i++){const row=[];for(let k=0;k<width;k++)row.push(new DataView(data.buffer,data.byteOffset,data.byteLength).getFloat32((a.byteOffset||0)+i*stride+k*4,true));rows.push(row);}
+            const dv=new DataView(data.buffer,data.byteOffset,data.byteLength),rows=[];
+            for(let i=0;i<a.count;i++){const row=[];for(let k=0;k<width;k++)row.push(dv.getFloat32((a.byteOffset||0)+i*stride+k*4,true));rows.push(row);}
             return rows;
           }
-          const clip=j.animations?.[0];
+          const clip=j.animations?.[0],quat=new THREE.Quaternion(),euler=new THREE.Euler();
           for(const channel of clip.channels) {
             const node=j.nodes[channel.target.node]?.name||'';
             if(!/Bip01$|Bip01 [LR] (Thigh|Calf|Foot|Toe0)/.test(node)) continue;
             const sampler=clip.samplers[channel.sampler],times=(await accessor(sampler.input)).flat(),values=await accessor(sampler.output);
-            if(channel.target.path==='rotation'){
-              const angles=values.map(q=>2*Math.atan2(q[0],q[3])*180/Math.PI);
-              console.log('WALK_TRACK',node,'FRAMES',times.length,'DURATION',times.at(-1).toFixed(3),'X_DEG_RANGE',Math.min(...angles).toFixed(1),Math.max(...angles).toFixed(1),'X_SAMPLES',angles.filter((_,i)=>i%Math.max(1,Math.floor(angles.length/8))===0).map(x=>x.toFixed(1)).join(','));
-            } else {
-              console.log('WALK_TRACK',node,channel.target.path,'FRAMES',times.length,'DURATION',times.at(-1).toFixed(3),'FIRST',values[0].map(x=>x.toFixed(3)).join(','),'LAST',values.at(-1).map(x=>x.toFixed(3)).join(','));
-            }
+            const ix=[0,Math.floor((times.length-1)*.125),Math.floor((times.length-1)*.25),Math.floor((times.length-1)*.375),Math.floor((times.length-1)*.5),Math.floor((times.length-1)*.625),Math.floor((times.length-1)*.75),Math.floor((times.length-1)*.875),times.length-1];
+            const samples=ix.map(i=>{
+              const v=values[i];
+              if(channel.target.path==='rotation'){quat.set(v[0],v[1],v[2],v[3]);euler.setFromQuaternion(quat,'XYZ');return [euler.x,euler.y,euler.z].map(x=>(x*180/Math.PI).toFixed(1)).join('/');
+              }
+              return v.map(x=>x.toFixed(3)).join('/');
+            }).join(' | ');
+            console.log('WALK_SAMPLES',node,channel.target.path,'FRAMES',times.length,'DURATION',times.at(-1).toFixed(3),samples);
           }
           NODE
       - name: Build game
