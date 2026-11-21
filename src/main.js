@@ -453,7 +453,15 @@ characterLoader.load(playerModelUrl, (gltf) => {
    leftarm:'lupperarm',leftforearm:'lforearm',lefthand:'lhand',
    rightarm:'rupperarm',rightforearm:'rforearm',righthand:'rhand',
    leftupleg:'lthigh',leftleg:'lcalf',leftfoot:'lfoot',lefttoebase:'ltoe0',
-   rightupleg:'rthigh',rightleg:'rcalf',rightfoot:'rfoot',righttoebase:'rtoe0'
+   rightupleg:'rthigh',rightleg:'rcalf',rightfoot:'rfoot',righttoebase:'rtoe0',
+   // The crouched GLB uses a different naming scheme from the Sit/Stand Mixamo rig.
+   // These aliases map its pelvis, three spine segments and left/right leg bones.
+   pelvis:'pelvis',
+   spine01:'spine',spine02:'spine1',spine03:'spine2',
+   thighl:'lthigh',thighr:'rthigh',
+   calfl:'lcalf',calfr:'rcalf',
+   footl:'lfoot',footr:'rfoot',
+   balll:'ltoe0',ballr:'rtoe0'
   };
   const sourceBounds=new THREE.Box3().setFromObject(bundle.scene);
   const sourceHeight=sourceBounds.getSize(new THREE.Vector3()).y;
@@ -467,7 +475,9 @@ characterLoader.load(playerModelUrl, (gltf) => {
     const property=track.name.slice(split+1);
     const sourceName=track.name.slice(0,split);
     const sourceKey=normalizeBoneName(sourceName).replace(/^mixamorig/,'');
-    if(ignoreRootTranslation&&property==='position'&&/^(hips|root)$/.test(sourceKey))continue;
+    // The crouch GLB's pelvis translation is forward root-motion, not body lowering.
+    // Strip it so joystick movement remains the only source of world translation.
+    if(ignoreRootTranslation&&property==='position'&&/^(hips|pelvis|root)$/.test(sourceKey))continue;
     const targetKey=sourceToTarget[sourceKey];
     if(!targetKey)continue;
     // Sit-down animation folds the forearms/hands together unnaturally.
@@ -552,7 +562,7 @@ characterLoader.load(playerModelUrl, (gltf) => {
    // were retargeting into a wide, upright pose on this character.
    mappedCrouchClip.tracks=mappedCrouchClip.tracks.filter(track=>{
     const node=normalizeBoneName(track.name.slice(0,track.name.lastIndexOf('.'))).replace(/^bip01/,'');
-    return /^(pelvis|hips|spine|spine2|lthigh|rthigh|lcalf|rcalf|lfoot|rfoot|ltoe0|rtoe0)$/.test(node);
+    return /^(pelvis|hips|spine|spine1|spine2|lthigh|rthigh|lcalf|rcalf|lfoot|rfoot|ltoe0|rtoe0)$/.test(node);
    });
    if(!mappedCrouchClip.tracks.length){console.warn('Crouched walk retarget found no matching BIP01 tracks',sourceCrouchClip.tracks.map(t=>t.name));toast('Crouch walk rig mapping failed');return;}
    if(crouchWalkAction)crouchWalkAction.stop();
@@ -823,7 +833,7 @@ function playSitDown(){
  updateStanceButtons();
  if(crouchWalkAction){
   crouchWalkAction.stopFading();crouchWalkAction.enabled=true;
-  crouchWalkAction.reset();crouchWalkAction.time=Math.min(.22,crouchWalkAction.getClip().duration*.18);
+  crouchWalkAction.reset();crouchWalkAction.time=crouchWalkAction.getClip().duration*.75;
   crouchWalkAction.paused=true;crouchWalkAction.setEffectiveWeight(1).play();
   activeCharacterAction=crouchWalkAction;characterAnimationState='crouch-idle';
  }else{
@@ -1108,7 +1118,10 @@ if(pickupLabel.style.display==='block'){const p=roadPickup.position.clone();p.y+
      Object.values(characterActions).forEach(action=>{if(action&&action!==crouchWalkAction)action.fadeOut(.12);});
      if(standAction)standAction.fadeOut(.12);
      if(sitAction)sitAction.stop();
-     crouchWalkAction.reset().setEffectiveWeight(1).fadeIn(.12).play();
+     // Start moving from the same planted phase used by crouch idle.
+     crouchWalkAction.reset();
+     crouchWalkAction.time=crouchWalkAction.getClip().duration*.75;
+     crouchWalkAction.setEffectiveWeight(1).fadeIn(.12).play();
     }
     // Only the authored crouch-walk clip controls the moving pose.
     if(sitAction)sitAction.stop();
@@ -1120,7 +1133,7 @@ if(pickupLabel.style.display==='block'){const p=roadPickup.position.clone();p.y+
     if(crouchWalkAction){
      crouchWalkAction.stopFading();crouchWalkAction.enabled=true;
      crouchWalkAction.paused=true;
-     crouchWalkAction.time=Math.min(.22,crouchWalkAction.getClip().duration*.18);
+     crouchWalkAction.time=crouchWalkAction.getClip().duration*.75;
      crouchWalkAction.setEffectiveWeight(1).play();
      activeCharacterAction=crouchWalkAction;characterAnimationState='crouch-idle';
     }else{
