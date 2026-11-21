@@ -548,6 +548,12 @@ characterLoader.load(playerModelUrl, (gltf) => {
    const sourceCrouchClip=crouchGltf.animations?.find(clip=>/crouch|walk/i.test(clip.name))||crouchGltf.animations?.[0];
    if(!sourceCrouchClip){console.warn('Crouched walk GLB has no animation clip');toast('Crouch walk clip missing');return;}
    const mappedCrouchClip=retargetClip(sourceCrouchClip,true,crouchBones,true);
+   // Keep the crouch-walk clip focused on lower-body motion; its arm tracks
+   // were retargeting into a wide, upright pose on this character.
+   mappedCrouchClip.tracks=mappedCrouchClip.tracks.filter(track=>{
+    const node=normalizeBoneName(track.name.slice(0,track.name.lastIndexOf('.'))).replace(/^bip01/,'');
+    return /^(pelvis|hips|spine|spine2|lthigh|rthigh|lcalf|rcalf|lfoot|rfoot|ltoe0|rtoe0)$/.test(node);
+   });
    if(!mappedCrouchClip.tracks.length){console.warn('Crouched walk retarget found no matching BIP01 tracks',sourceCrouchClip.tracks.map(t=>t.name));toast('Crouch walk rig mapping failed');return;}
    if(crouchWalkAction)crouchWalkAction.stop();
    crouchWalkAction=characterMixer.clipAction(mappedCrouchClip);
@@ -806,31 +812,24 @@ function setPlayerStance(next){
  updateStanceButtons();
 }
 function playSitDown(){
- if(sitStandBusy)return;
- if(!sitAction){toast('Sit animation is still loading');return;}
- sitStandBusy=true;
- playerStance='crouch';updateStanceButtons();
+ // Crouch is a gameplay stance, not a seated transition. Avoid the imported
+ // sit clip's arm-spread pose and switch directly to a compact crouch.
+ sitStandBusy=false;isSitting=true;playerStance='crouch';
+ if(sitAction)sitAction.stop();
+ if(standAction)standAction.stop();
  if(crouchWalkAction)crouchWalkAction.stop();
- if(activeCharacterAction&&activeCharacterAction!==sitAction)activeCharacterAction.fadeOut(.12);
- sitAction.stopFading();sitAction.enabled=true;sitAction.paused=false;
- sitAction.reset().setLoop(THREE.LoopOnce,1).setEffectiveTimeScale(1.25).setEffectiveWeight(1).fadeIn(.08).play();
- activeCharacterAction=sitAction;
- characterAnimationState='sit-transition';
- crouchButton.style.filter='brightness(1.35)';
+ activeCharacterAction=null;characterAnimationState='';
+ updateStanceButtons();
+ setCharacterAnimation('idle');
 }
 function playStandUp(nextStance='stand'){
- if(sitStandBusy)return;
- if(!standAction){toast('Stand animation is still loading');return;}
- pendingStanceAfterStand=nextStance;
- sitStandBusy=true;
+ sitStandBusy=false;isSitting=false;playerStance=nextStance;
+ if(sitAction)sitAction.stop();
+ if(standAction)standAction.stop();
  if(crouchWalkAction)crouchWalkAction.stop();
- if(activeCharacterAction&&activeCharacterAction!==standAction)activeCharacterAction.fadeOut(.12);
- if(sitAction){sitAction.stopFading();sitAction.fadeOut(.12);}
- standAction.stopFading();standAction.enabled=true;standAction.paused=false;
- standAction.reset().setLoop(THREE.LoopOnce,1).setEffectiveTimeScale(1.25).setEffectiveWeight(1).fadeIn(.08).play();
- activeCharacterAction=standAction;
- characterAnimationState='stand-transition';
- crouchButton.style.filter='brightness(1.35)';
+ activeCharacterAction=null;characterAnimationState='';
+ updateStanceButtons();
+ setCharacterAnimation('idle');
 }
 function toggleSitStand(){
  if(playerStance==='crouch'||isSitting)playStandUp('stand');
@@ -1107,8 +1106,9 @@ if(pickupLabel.style.display==='block'){const p=roadPickup.position.clone();p.y+
     activeCharacterAction=crouchWalkAction;characterAnimationState='crouch-walk';
    }else{
     if(crouchWalkAction)crouchWalkAction.stop();
-    if(sitAction){sitAction.stopFading();sitAction.enabled=true;sitAction.paused=true;sitAction.time=sitAction.getClip().duration;sitAction.setEffectiveWeight(1);}
-    if(activeCharacterAction===crouchWalkAction)activeCharacterAction=sitAction;
+    if(sitAction)sitAction.stop();
+    if(activeCharacterAction===crouchWalkAction)activeCharacterAction=null;
+    setCharacterAnimation('idle');
     characterAnimationState='crouch-idle';
    }
   }else{
@@ -1126,6 +1126,19 @@ if(pickupLabel.style.display==='block'){const p=roadPickup.position.clone();p.y+
  // The uploaded crouch-walk GLB already contains its crouched body pose.
  // Do not add a second procedural hips/spine bend here: stacking both poses
  // was forcing the character into an exaggerated forward lean.
+ // Compact crouch pose layered on the walk cycle: knees bent, slight hip
+ // lowering, upright torso and arms kept close to the body.
+ if(proceduralRigBones.length&&playerStance==='crouch'&&!sitStandBusy){
+  for(const e of proceduralRigBones){
+   let offset=0;
+   if(e.role==='hips')offset=.10;
+   else if(e.role==='leg')offset=.42;
+   else if(e.role==='knee')offset=-.58;
+   else if(e.role==='spine')offset=-.08;
+   else if(e.role==='arm')offset=-.08;
+   e.bone.rotation.x+=offset;e.appliedOffset+=offset;
+  }
+ }
  if(proceduralRigBones.length&&playerStance==='prone'){
   for(const e of proceduralRigBones){
    let pose=0;
