@@ -720,11 +720,22 @@ punchButton.id='ska-punch';
 punchButton.style.left='18px';punchButton.style.right='auto';punchButton.style.top='92px';punchButton.style.bottom='auto';
 punchButton.innerHTML='<span id="ska-action-weapon-icon" style="font-size:30px;line-height:1">✊</span>';punchButton.title='MUKKA';punchButton.setAttribute('aria-label','MUKKA');
 const backpackButton=makeActionButton('BAG','18px','78px','#214b68dd');backpackButton.id='ska-backpack';backpackButton.innerHTML='<span style="font-size:29px;line-height:1">🎒</span>';backpackButton.title='BAGPACK';backpackButton.setAttribute('aria-label','BAGPACK');
-const inventoryPanel=document.createElement('section');inventoryPanel.style.cssText='position:fixed;right:14px;top:148px;z-index:10002;width:min(245px,78vw);max-height:48vh;overflow:auto;padding:12px;border:1px solid #ffffff70;border-radius:13px;background:#14232bf2;color:#fff;box-shadow:0 8px 28px #0008;font:13px Arial;display:none;pointer-events:auto';
-inventoryPanel.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;font-weight:900"><span>🎒 BAGPACK</span><button id="ska-bag-close" style="border:1px solid #ffffff55;background:#ffffff15;color:#fff;border-radius:7px;padding:5px 9px">×</button></div><div id="ska-bag-items" style="margin-top:10px;line-height:1.7">Bag is empty.</div>';hudRoot.appendChild(inventoryPanel);
+const inventoryPanel=document.createElement('section');inventoryPanel.style.cssText='position:fixed;left:18px;bottom:88px;z-index:10002;width:min(250px,78vw);max-height:42vh;overflow:auto;padding:11px;border:1px solid #ffffff70;border-radius:13px;background:#14232bf2;color:#fff;box-shadow:0 8px 28px #0008;font:13px Arial;display:none;pointer-events:auto';
+inventoryPanel.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;font-weight:900"><span>🎒 INVENTORY</span><button id="ska-bag-close" style="border:1px solid #ffffff55;background:#ffffff15;color:#fff;border-radius:7px;padding:5px 9px">×</button></div><div id="ska-bag-items" style="margin-top:10px;line-height:1.7">No items collected.</div>';hudRoot.appendChild(inventoryPanel);
 const bagItemsNode=inventoryPanel.querySelector('#ska-bag-items');
-function refreshInventory(){bagItemsNode.textContent=inventoryItems.length?inventoryItems.map(item=>item.icon+' '+item.name+(equippedItem===item?' · SELECTED':'')).join(' | '):'Bag is empty. Pick up items from the road.';const icon=document.getElementById('ska-action-weapon-icon');if(icon)icon.textContent=equippedItem?equippedItem.icon:'✊';punchButton.title=equippedItem?equippedItem.name:'MUKKA';}
+function refreshInventory(){
+ bagItemsNode.innerHTML='';
+ if(!inventoryItems.length){bagItemsNode.textContent='No items collected yet.';return;}
+ inventoryItems.forEach(item=>{
+  const row=document.createElement('button');row.type='button';row.textContent=item.icon+'  '+item.name+(equippedItem===item?'  ✓':'');row.style.cssText='display:block;width:100%;margin:5px 0;padding:10px;text-align:left;border:1px solid #ffffff55;border-radius:9px;background:'+(equippedItem===item?'#28644b':'#ffffff12')+';color:white;font:700 14px Arial;touch-action:manipulation';
+  row.addEventListener('click',()=>{equippedItem=item;refreshInventory();refreshWeaponVisual();toast(item.name+' selected');});
+  bagItemsNode.appendChild(row);
+ });
+ const icon=document.getElementById('ska-action-weapon-icon');if(icon)icon.textContent=equippedItem?equippedItem.icon:'✊';punchButton.title=equippedItem?equippedItem.name:'MUKKA';
+}
 wireButtonAction(backpackButton,()=>{inventoryPanel.style.display=inventoryPanel.style.display==='block'?'none':'block';refreshInventory();});inventoryPanel.querySelector('#ska-bag-close').addEventListener('click',()=>inventoryPanel.style.display='none');
+const weaponSelectButton=makeActionButton('BAG','auto','auto','#4a382bdd');weaponSelectButton.id='ska-weapon-select';weaponSelectButton.style.left='18px';weaponSelectButton.style.right='auto';weaponSelectButton.style.bottom='18px';weaponSelectButton.style.top='auto';weaponSelectButton.innerHTML='<span style="font-size:29px">⚔️</span>';weaponSelectButton.title='WEAPONS';weaponSelectButton.setAttribute('aria-label','Weapons');
+wireButtonAction(weaponSelectButton,()=>{inventoryPanel.style.display=inventoryPanel.style.display==='block'?'none':'block';refreshInventory();});
 
 jumpButton.id='ska-jump';
 jumpButton.style.bottom='max(7vh,calc(env(safe-area-inset-bottom) + 12px))';
@@ -748,10 +759,12 @@ let jumpVelocity=0, jumpActive=false, isDriving=false, activeVehicle=null, nearb
 let punchTimer=0,punchSide=1;
 let playerStance='stand';
 function updateStanceButtons(){
- crouchButton.textContent=playerStance==='crouch'?'STAND':'SIT';
+ crouchButton.innerHTML=playerStance==='crouch'?
+ '<svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="15" cy="4" r="2"/><path d="M13 7 9 11l4 3 4 1 2 5M9 11l-5 3-1 4"/></svg>':
+ '<svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="4" r="2"/><path d="M12 7v6m0-3-5 3m5-3 5 3M12 13l-4 7m4-7 4 7"/></svg>';
  crouchButton.style.background=playerStance==='crouch'?'#426c8ddd':'#17252cdd';
- crouchButton.setAttribute('aria-label',playerStance==='crouch'?'Stand up':'Sit down');
- crouchButton.title=playerStance==='crouch'?'Stand up':'Sit down';
+ crouchButton.setAttribute('aria-label','Sit / stand');
+ crouchButton.title='';
  proneButton.textContent=playerStance==='prone'?'WAKE':'SLEEP';
  proneButton.style.background=playerStance==='prone'?'#426c8ddd':'#17252cdd';
  proneButton.setAttribute('aria-label',playerStance==='prone'?'Wake up':'Lie down');
@@ -812,11 +825,11 @@ const proneButton=makeActionButton('PRONE','max(22px,env(safe-area-inset-right))
 proneButton.id='ska-prone';
 proneButton.innerHTML='<svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="10" r="2"/><path d="M8 12h8l3 3M10 12l-2 5M14 12l2 5M18 15l3 2"/></svg>';
 proneButton.style.bottom='calc(max(7vh,env(safe-area-inset-bottom)) + (clamp(56px,10vh,68px) + 14px)*2)';
-crouchButton.textContent='SIT';
+crouchButton.innerHTML='<svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="4" r="2"/><path d="M12 7v6m0-3-5 3m5-3 5 3M12 13l-4 7m4-7 4 7"/></svg>';
 crouchButton.style.font='900 13px Arial,sans-serif';
 crouchButton.style.borderRadius='18px';
 crouchButton.style.background='#17252cdd';
-crouchButton.setAttribute('aria-label','Sit down');crouchButton.title='Sit down';
+crouchButton.setAttribute('aria-label','Sit / stand');crouchButton.title='';
 proneButton.textContent='SLEEP';
 proneButton.style.font='900 13px Arial,sans-serif';
 proneButton.style.borderRadius='18px';
@@ -1093,7 +1106,7 @@ if(pickupLabel.style.display==='block'){const p=roadPickup.position.clone();p.y+
    activeVehicle.position.z=THREE.MathUtils.clamp(activeVehicle.position.z+driveZ*driveSpeed*dt,-245,245);
    player.position.copy(activeVehicle.position);
   }else{
-  const speed=(1.4+joystickStrength*3.8+runBlend*4.2)*(keys.shift?1.12:1)*stanceSpeed;
+  const speed=(1.8+joystickStrength*3.1+runBlend*3.5)*(keys.shift?1.08:1)*stanceSpeed;
   // Keep the player outside parked vehicles instead of allowing the model to pass through them.
   // Translate joystick input relative to the camera: UP always moves away
   // from the camera's view direction, DOWN moves toward it.
@@ -1119,11 +1132,12 @@ if(pickupLabel.style.display==='block'){const p=roadPickup.position.clone();p.y+
   if(!blockedZ) player.position.z=nextZ;
   player.rotation.y=Math.atan2(worldX,worldZ);
   }
-  walkTime+=dt*10;
-  leftLeg.rotation.x=Math.sin(walkTime)*.58;
-  rightLeg.rotation.x=-Math.sin(walkTime)*.58;
-  leftArm.rotation.x=-Math.sin(walkTime)*.38;
-  rightArm.rotation.x=Math.sin(walkTime)*.38;
+  walkTime+=dt*(7+joystickStrength*10);
+  const stride=Math.sin(walkTime)*(.58+joystickStrength*.18);
+  leftLeg.rotation.x=stride;
+  rightLeg.rotation.x=-stride;
+  leftArm.rotation.x=-stride*.62;
+  rightArm.rotation.x=stride*.62;
   torso.position.y=Math.abs(Math.sin(walkTime*2))*.025;
  }else{
   leftLeg.rotation.x=THREE.MathUtils.damp(leftLeg.rotation.x,0,10,dt);
