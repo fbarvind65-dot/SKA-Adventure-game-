@@ -719,6 +719,13 @@ const punchButton=makeActionButton('PUNCH','auto','auto','#8a302ddd');
 punchButton.id='ska-punch';
 punchButton.style.left='18px';punchButton.style.right='auto';punchButton.style.top='92px';punchButton.style.bottom='auto';
 punchButton.innerHTML='<span id="ska-action-weapon-icon" style="font-size:30px;line-height:1">✊</span>';punchButton.title='MUKKA';punchButton.setAttribute('aria-label','MUKKA');
+const backpackButton=makeActionButton('BAG','18px','78px','#214b68dd');backpackButton.id='ska-backpack';backpackButton.innerHTML='<span style="font-size:29px;line-height:1">🎒</span>';backpackButton.title='BAGPACK';backpackButton.setAttribute('aria-label','BAGPACK');
+const inventoryPanel=document.createElement('section');inventoryPanel.style.cssText='position:fixed;right:14px;top:148px;z-index:10002;width:min(245px,78vw);max-height:48vh;overflow:auto;padding:12px;border:1px solid #ffffff70;border-radius:13px;background:#14232bf2;color:#fff;box-shadow:0 8px 28px #0008;font:13px Arial;display:none;pointer-events:auto';
+inventoryPanel.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;font-weight:900"><span>🎒 BAGPACK</span><button id="ska-bag-close" style="border:1px solid #ffffff55;background:#ffffff15;color:#fff;border-radius:7px;padding:5px 9px">×</button></div><div id="ska-bag-items" style="margin-top:10px;line-height:1.7">Bag is empty.</div>';hudRoot.appendChild(inventoryPanel);
+const bagItemsNode=inventoryPanel.querySelector('#ska-bag-items');
+function refreshInventory(){bagItemsNode.textContent=inventoryItems.length?inventoryItems.map(item=>item.icon+' '+item.name+(equippedItem===item?' · SELECTED':'')).join(' | '):'Bag is empty. Pick up items from the road.';const icon=document.getElementById('ska-action-weapon-icon');if(icon)icon.textContent=equippedItem?equippedItem.icon:'✊';punchButton.title=equippedItem?equippedItem.name:'MUKKA';}
+wireButtonAction(backpackButton,()=>{inventoryPanel.style.display=inventoryPanel.style.display==='block'?'none':'block';refreshInventory();});inventoryPanel.querySelector('#ska-bag-close').addEventListener('click',()=>inventoryPanel.style.display='none');
+
 jumpButton.id='ska-jump';
 jumpButton.style.bottom='max(7vh,calc(env(safe-area-inset-bottom) + 12px))';
 const viewButton=makeActionButton('FPP','max(22px,env(safe-area-inset-right))','auto');
