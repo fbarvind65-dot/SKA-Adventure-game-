@@ -8,6 +8,7 @@ import runAnimationUrl from './f_run_neutral_01.glb?url';
 import sitStandBundleUrl from './Business_Female_02-rigged-animated.glb?url';
 import crouchWalkAnimationUrl from './Walk_-_crouched_forwards.glb?url';
 import punchAnimationUrl from './Punch_-_cross_right_2.glb?url';
+import rockModelUrl from '../assets/rocks/rock_1_montebu (1).glb?url';
 
 const app = document.querySelector('#app');
 document.body.style.cssText = 'margin:0;overflow:hidden;background:#9bb8c7;font-family:Arial,sans-serif;overscroll-behavior:none;touch-action:none';
@@ -939,6 +940,82 @@ hint.textContent='Move: joystick · Hold RUN to sprint · Drag: 360° camera';
 app.appendChild(hint);
 
 
+/* Map 2: separate wildlands world. Map 1 objects are preserved and toggled, not rebuilt. */
+const map1WorldObjects=scene.children.filter(object=>object!==player&&!vehicles.includes(object)&&object!==roadPickup);
+const map2World=new THREE.Group();
+map2World.name='SKA_MAP_02_WILDLANDS';
+map2World.visible=false;
+scene.add(map2World);
+const map2GroundGeometry=new THREE.PlaneGeometry(520,520,100,100);
+const map2Positions=map2GroundGeometry.attributes.position;
+const map2Colors=[];
+for(let i=0;i<map2Positions.count;i++){
+ const x=map2Positions.getX(i),z=-map2Positions.getY(i);
+ const ridge=Math.max(0,1-Math.hypot(x,z)/280);
+ const elevation=Math.sin(x*.018)*2.2+Math.cos(z*.021)*2.4+ridge*ridge*18;
+ map2Positions.setZ(i,elevation);
+ const shade=THREE.MathUtils.clamp(.72+elevation*.012+(Math.sin(x*.13+z*.08)*.045),.55,1.12);
+ map2Colors.push(.20*shade,.31*shade,.16*shade);
+}
+map2GroundGeometry.setAttribute('color',new THREE.Float32BufferAttribute(map2Colors,3));
+map2GroundGeometry.computeVertexNormals();
+map2GroundGeometry.rotateX(-Math.PI/2);
+const map2Ground=new THREE.Mesh(map2GroundGeometry,new THREE.MeshStandardMaterial({vertexColors:true,roughness:1}));
+map2Ground.receiveShadow=true;map2World.add(map2Ground);
+const map2TrailPoints=[];
+for(let i=0;i<=24;i++){
+ const z=220-i*18;
+ const x=Math.sin(i*.24)*20-5;
+ map2TrailPoints.push(new THREE.Vector3(x,2.1+Math.sin(x*.018)*2.2+Math.cos(z*.021)*2.4,z));
+}
+const map2TrailCurve=new THREE.CatmullRomCurve3(map2TrailPoints);
+const map2Trail=new THREE.Mesh(new THREE.TubeGeometry(map2TrailCurve,180,2.5,8,false),new THREE.MeshStandardMaterial({color:0x75634a,roughness:1}));
+map2Trail.position.y=-.15;map2Trail.receiveShadow=true;map2World.add(map2Trail);
+const map2Bark=new THREE.MeshStandardMaterial({color:0x4a3526,roughness:1});
+const map2LeafMaterials=[0x263f2b,0x304b30,0x3c5734,0x465d39].map(color=>new THREE.MeshStandardMaterial({color,roughness:1}));
+function map2Tree(x,z,scale=1){
+ const treeGroup=new THREE.Group();treeGroup.position.set(x,0,z);treeGroup.scale.setScalar(scale);map2World.add(treeGroup);
+ const trunk=new THREE.Mesh(new THREE.CylinderGeometry(.22,.38,5.4,9),map2Bark);trunk.position.y=2.7;trunk.castShadow=true;treeGroup.add(trunk);
+ for(let layer=0;layer<4;layer++){
+  const crown=new THREE.Mesh(new THREE.IcosahedronGeometry(2.25-layer*.18,1),map2LeafMaterials[(Math.abs(Math.floor(x*3+z*2))+layer)%map2LeafMaterials.length]);
+  crown.position.set(Math.sin(layer*2.1)*.55,4.7+layer*1.15,Math.cos(layer*1.7)*.45);
+  crown.scale.set(1.05,.95,1);crown.castShadow=true;treeGroup.add(crown);
+ }
+}
+for(let i=0;i<150;i++){
+ const angle=i*2.399963,rad=34+((i*37)%205);
+ const x=Math.cos(angle)*rad,z=Math.sin(angle)*rad;
+ if(Math.abs(x-Math.sin((220-z)/18*.24)*20+5)<9)continue;
+ map2Tree(x,z,.75+((i*13)%55)/100);
+}
+const map2RockLoader=new GLTFLoader();
+map2RockLoader.setMeshoptDecoder(MeshoptDecoder);
+map2RockLoader.load(rockModelUrl,gltf=>{
+ const rockSource=gltf.scene;
+ rockSource.traverse(object=>{if(object.isMesh){object.castShadow=true;object.receiveShadow=true;}});
+ const rockBounds=new THREE.Box3().setFromObject(rockSource);
+ const rockSize=rockBounds.getSize(new THREE.Vector3());
+ const rockScale=3.2/Math.max(rockSize.y,.01);
+ const rockSpots=[[-17,26,1.5],[21,44,2.2],[-35,82,1.8],[38,108,2.5],[12,-35,1.4],[-54,-72,2.8],[62,-95,1.9],[0,155,3.1]];
+ for(const [x,z,size] of rockSpots){
+  const rock=rockSource.clone(true);rock.scale.setScalar(rockScale*size);
+  rock.position.set(x,-rockBounds.min.y*rockScale*size,z);
+  rock.rotation.y=(x*13+z*7)*.017;map2World.add(rock);
+ }
+ console.info('Map 2 rock asset loaded:',rockSpots.length,'placed copies');
+},undefined,error=>console.error('Map 2 rock GLB failed to load:',error));
+function setWorldMap(mapId){
+ const wildlands=mapId==='map2';
+ map1WorldObjects.forEach(object=>object.visible=!wildlands);
+ map2World.visible=wildlands;
+ vehicles.forEach(vehicle=>vehicle.visible=!wildlands);
+ roadPickup.visible=!wildlands;
+ scene.background=new THREE.Color(wildlands?0x91a69a:0x9eb8c8);
+ scene.fog.color.set(wildlands?0x91a69a:0x9eb8c8);
+ scene.fog.density=wildlands?.0035:.0028;
+ mapPanel.querySelector('div').textContent=wildlands?'WILDLANDS MAP':'CITY MAP';
+}
+
 /* Full-screen SKA lobby with a central 3D avatar and full game-home menus. */
 let gameStarted=false;
 hudRoot.style.display='none'; hud.style.display='none'; hint.style.display='none';
@@ -991,6 +1068,7 @@ lobbyReturnButton.style.cssText='position:fixed;top:max(12px,env(safe-area-inset
 hudRoot.appendChild(lobbyReturnButton);
 lobbyReturnButton.addEventListener('click',async()=>{
  gameStarted=false;
+ setWorldMap('map1');
  lobbyReturnButton.style.display='none';
  hudRoot.style.display='none';hud.style.display='none';hint.style.display='none';
  lobbyStageBase.visible=true;lobbyStageRing.visible=true;
@@ -1023,7 +1101,7 @@ const lobbyPanels={
  inventory:["INVENTORY",'<div class="l-modal-row">Your inventory is empty. Items and equipment collection are not implemented yet.</div>'],
  report:["REPORT",'<div class="l-modal-row">Report menu is not connected to an online support service.</div>'],
  theme:["THEME",'<div class="l-modal-row">SKA standard theme is active.</div>'],
- mode:["SELECT MAP","<div class=\"l-map-grid\"><button class=\"l-map-card selected\" data-map-select=\"map1\"><span class=\"map-num\">MAP 01</span><strong>City District</strong><small>Current city environment · Free roam</small><span class=\"map-state\">✓ PLAYABLE</span></button><button class=\"l-map-card map-unbuilt\" data-map-select=\"map2\"><span class=\"map-num\">MAP 02</span><strong>City & Wildlands</strong><small>City, jungle, mountains and missions</small><span class=\"map-state\">UNDER CONSTRUCTION</span></button></div><div class=\"l-modal-row\" id=\"ska-map-selection-note\">Map 1 is ready to play. Map 2 will be enabled after its world is built.</div>"]
+ mode:["SELECT MAP","<div class=\"l-map-grid\"><button class=\"l-map-card selected\" data-map-select=\"map1\"><span class=\"map-num\">MAP 01</span><strong>City District</strong><small>Current city environment · Free roam</small><span class=\"map-state\">✓ PLAYABLE</span></button><button class=\"l-map-card map-unbuilt\" data-map-select=\"map2\"><span class=\"map-num\">MAP 02</span><strong>City & Wildlands</strong><small>City, jungle, mountains and missions</small><span class=\"map-state\">UNDER CONSTRUCTION</span></button></div><div class=\"l-modal-row\" id=\"ska-map-selection-note\">Map 1 is ready to play. Map 2 · Wildlands · playable</div>"]
 };
 const lobbyModal=lobbyScreen.querySelector('#ska-lobby-modal');
 let selectedMapId='map1';
@@ -1035,7 +1113,7 @@ lobbyScreen.addEventListener('click',e=>{
   const label=lobbyScreen.querySelector('#ska-selected-map-label');
   if(label)label.textContent=selectedMapId==='map1'?'MAP 1 · CITY　⌄':'MAP 2 · WILDLANDS　⌄';
   const note=lobbyScreen.querySelector('#ska-map-selection-note');
-  if(note)note.textContent=selectedMapId==='map1'?'Map 1 is ready to play.':'Map 2 is selected, but its playable environment is still being built. Map 1 remains available.';
+  if(note)note.textContent=selectedMapId==='map1'?'Map 1 · City District':'Map 2 · Wildlands with forest, hills and the uploaded rock asset';
   return;
  }
  const trigger=e.target.closest('[data-lobby-panel]');
@@ -1050,12 +1128,8 @@ lobbyScreen.querySelector('#ska-lobby-close').addEventListener('click',()=>lobby
 lobbyScreen.querySelector('#ska-lobby-landscape').addEventListener('click',()=>requestLandscape());
 lobbyModal.addEventListener('click',e=>{if(e.target===lobbyModal)lobbyModal.classList.remove('open')});
 lobbyScreen.querySelector('#ska-lobby-play').addEventListener('click',async()=>{
- if(selectedMapId==='map2'){
-  lobbyScreen.querySelector('#ska-lobby-modal-title').textContent='MAP 2 · CITY & WILDLANDS';
-  lobbyScreen.querySelector('#ska-lobby-modal-body').innerHTML='<div class="l-modal-row">Map 2 is selected. Its city, jungle and mountain world has not been added to the game yet, so START is kept safe and will not send you into the wrong map.</div><div class="l-modal-row">Map 1 · City District is playable now.</div>';
-  lobbyModal.classList.add('open');
-  return;
- }
+ const activeMap=selectedMapId==='map2'?'map2':'map1';
+ setWorldMap(activeMap);
  gameStarted=true;
  lobbyReturnButton.style.display='block';
  hudRoot.style.display='block';hud.style.display='block';hint.style.display='block';
@@ -1064,7 +1138,7 @@ lobbyScreen.querySelector('#ska-lobby-play').addEventListener('click',async()=>{
  scene.background=new THREE.Color(0x9eb8c8);
  lobbyStageBase.visible=false; lobbyStageRing.visible=false;
  vehicles[0].position.copy(lobbyVehicleOriginal);
- player.position.set(0,0,18);
+ player.position.set(activeMap==='map2'?0:0,0,activeMap==='map2'?8:18);
  hudRoot.style.display='block'; hud.style.display='block';
  cameraYaw=0;cameraPitch=.24;cameraDistance=8.5;
  updateHudLayout();
