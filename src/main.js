@@ -919,6 +919,9 @@ let gameStarted=false;
 hudRoot.style.display='none'; hud.style.display='none'; hint.style.display='none';
 const lobbyVehicleOriginal=vehicles[0].position.clone();
 vehicles[0].position.set(-4.1,0,17.2);
+const lobbyOriginalSceneBackground=scene.background;
+const lobbyBackgroundTexture=new THREE.TextureLoader().load(new URL('./lv_0_20261021173325.jpg',import.meta.url).href,texture=>{texture.colorSpace=THREE.SRGBColorSpace;scene.background=texture;},undefined,error=>console.error('Lobby background photo failed to load:',error));
+scene.background=lobbyBackgroundTexture;
 const lobbyStageBase=new THREE.Mesh(new THREE.CylinderGeometry(3.15,3.35,.16,56),new THREE.MeshStandardMaterial({color:0x26343d,metalness:.48,roughness:.42}));
 lobbyStageBase.position.set(0,-.055,18); lobbyStageBase.receiveShadow=true; scene.add(lobbyStageBase);
 const lobbyStageRing=new THREE.Mesh(new THREE.TorusGeometry(3.12,.045,10,64),new THREE.MeshStandardMaterial({color:0xd9ad4b,metalness:.65,roughness:.28,emissive:0x55380a,emissiveIntensity:.25}));
@@ -926,7 +929,7 @@ lobbyStageRing.rotation.x=Math.PI/2; lobbyStageRing.position.set(0,.035,18); sce
 
 const lobbyCss=document.createElement('style');
 lobbyCss.textContent=[
-'#ska-lobby{position:fixed!important;inset:0!important;width:100vw!important;height:100dvh!important;z-index:2147483647!important;display:block!important;overflow:hidden!important;pointer-events:auto!important;color:#f7f8fa;font-family:Arial,Helvetica,sans-serif;background-color:#08121a;background-image:linear-gradient(90deg,rgba(5,13,20,.38),rgba(7,17,24,.02) 38%,rgba(7,17,24,.04) 64%,rgba(5,13,20,.38)),url(./lv_0_20261021173325.jpg);background-position:center;background-repeat:no-repeat;background-size:contain}',
+'#ska-lobby{position:fixed!important;inset:0!important;width:100vw!important;height:100dvh!important;z-index:2147483647!important;display:block!important;overflow:hidden!important;pointer-events:auto!important;color:#f7f8fa;font-family:Arial,Helvetica,sans-serif;background:linear-gradient(90deg,rgba(5,13,20,.16),rgba(7,17,24,0) 38%,rgba(7,17,24,0) 64%,rgba(5,13,20,.16))}',
 '#ska-lobby *{box-sizing:border-box} #ska-lobby button{font:inherit;color:inherit;cursor:pointer;touch-action:manipulation}',
 '#ska-lobby .l-top{position:absolute;left:1.4vw;right:1.4vw;top:1.5vh;display:flex;align-items:flex-start;justify-content:space-between;gap:10px}',
 '#ska-lobby .l-profile{display:flex;align-items:center;gap:10px;min-width:205px;padding:7px 12px 7px 7px;border:1px solid #ffffff55;border-radius:10px;background:linear-gradient(100deg,#17232de8,#17232d88);box-shadow:0 4px 18px #0005;text-align:left}',
@@ -990,6 +993,7 @@ lobbyScreen.querySelector('#ska-lobby-play').addEventListener('click',async()=>{
  hudRoot.style.display='block';hud.style.display='block';hint.style.display='block';
  try{await requestLandscape();}catch(e){console.info('Fullscreen unavailable',e)}
  lobbyScreen.remove();
+ scene.background=new THREE.Color(0x9eb8c8);
  lobbyStageBase.visible=false; lobbyStageRing.visible=false;
  vehicles[0].position.copy(lobbyVehicleOriginal);
  player.position.set(0,0,18);
