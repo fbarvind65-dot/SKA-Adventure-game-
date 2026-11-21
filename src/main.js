@@ -731,14 +731,17 @@ const punchButton=makeActionButton('PUNCH','auto','auto','#8a302ddd');
 punchButton.id='ska-punch';
 punchButton.style.left='18px';punchButton.style.right='auto';punchButton.style.top='92px';punchButton.style.bottom='auto';
 punchButton.innerHTML='<span id="ska-action-weapon-icon" style="font-size:30px;line-height:1">✊</span>';punchButton.title='MUKKA';punchButton.setAttribute('aria-label','MUKKA');
-const backpackButton=makeActionButton('BAG','50%','78px','#214b68dd');backpackButton.id='ska-backpack';backpackButton.style.right='50%';backpackButton.style.transform='translateX(50%)';backpackButton.innerHTML='<span style="font-size:29px;line-height:1">🎒</span>';backpackButton.title='BAGPACK';backpackButton.setAttribute('aria-label','BAGPACK');
+const backpackButton=makeActionButton('BAG','auto','auto','#214b68dd');backpackButton.id='ska-backpack';backpackButton.style.left='calc(50% + 74px)';backpackButton.style.right='auto';backpackButton.style.bottom='18px';backpackButton.style.top='auto';backpackButton.innerHTML='<span style="font-size:29px;line-height:1">🎒</span>';backpackButton.title='BAGPACK';backpackButton.setAttribute('aria-label','BAGPACK');
 const inventoryPanel=document.createElement('section');inventoryPanel.style.cssText='position:fixed;left:18px;bottom:88px;z-index:10002;width:min(250px,78vw);max-height:42vh;overflow:auto;padding:11px;border:1px solid #ffffff70;border-radius:13px;background:#14232bf2;color:#fff;box-shadow:0 8px 28px #0008;font:13px Arial;display:none;pointer-events:auto';
 inventoryPanel.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;font-weight:900"><span>🎒 INVENTORY</span><button id="ska-bag-close" style="border:1px solid #ffffff55;background:#ffffff15;color:#fff;border-radius:7px;padding:5px 9px">×</button></div><div id="ska-bag-items" style="margin-top:10px;line-height:1.7">No items collected.</div>';hudRoot.appendChild(inventoryPanel);
 const bagItemsNode=inventoryPanel.querySelector('#ska-bag-items');
 function refreshInventory(){
  bagItemsNode.innerHTML='';
  refreshWeaponVisual();
- if(!inventoryItems.length){bagItemsNode.textContent='No items collected yet.';const icon=document.getElementById('ska-action-weapon-icon');if(icon)icon.textContent='✊';punchButton.title='MUKKA';refreshWeaponVisual();return;}
+ const fistRow=document.createElement('button');fistRow.type='button';fistRow.textContent='👊  Punch / Empty hands'+(equippedItem===null?'  ✓':'');
+ fistRow.style.cssText='display:block;width:100%;margin:5px 0;padding:10px;text-align:left;border:1px solid #ffffff55;border-radius:9px;background:'+(equippedItem===null?'#28644b':'#ffffff12')+';color:white;font:700 14px Arial;touch-action:manipulation';
+ fistRow.addEventListener('click',()=>{equippedItem=null;refreshInventory();refreshWeaponVisual();toast('Punch selected · gun hidden');});
+ bagItemsNode.appendChild(fistRow);
  inventoryItems.forEach(item=>{
   const row=document.createElement('button');row.type='button';row.textContent=item.icon+'  '+item.name+(equippedItem===item?'  ✓':'');row.style.cssText='display:block;width:100%;margin:5px 0;padding:10px;text-align:left;border:1px solid #ffffff55;border-radius:9px;background:'+(equippedItem===item?'#28644b':'#ffffff12')+';color:white;font:700 14px Arial;touch-action:manipulation';
   row.addEventListener('click',()=>{equippedItem=item;refreshInventory();refreshWeaponVisual();toast(item.name+' selected');});
