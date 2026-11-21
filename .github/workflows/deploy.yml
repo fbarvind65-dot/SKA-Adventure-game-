@@ -31,45 +31,20 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Diagnose walk animation keyframes
+      - name: Compare player and animation bind poses
         run: |
           node --input-type=module <<'NODE'
           import fs from 'node:fs';
-          import * as THREE from 'three';
-          import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
-          await MeshoptDecoder.ready;
-          const b=fs.readFileSync('src/f_walk_neutral_01.glb');
-          const jsonLength=b.readUInt32LE(12);
-          const j=JSON.parse(b.toString('utf8',20,20+jsonLength).trim());
-          const binStart=28+jsonLength;
-          async function viewBytes(index) {
-            const v=j.bufferViews[index], ext=v.extensions?.EXT_meshopt_compression;
-            if (!ext) return b.subarray(binStart+(v.byteOffset||0),binStart+(v.byteOffset||0)+v.byteLength);
-            const src=b.subarray(binStart+ext.byteOffset,binStart+ext.byteOffset+ext.byteLength);
-            const target=new Uint8Array(ext.count*ext.byteStride);
-            await MeshoptDecoder.decodeGltfBuffer(target,ext.count,ext.byteStride,src,ext.mode);
-            return target;
-          }
-          async function accessor(index) {
-            const a=j.accessors[index],v=j.bufferViews[a.bufferView],data=await viewBytes(a.bufferView);
-            const width=({SCALAR:1,VEC2:2,VEC3:3,VEC4:4})[a.type],stride=v.extensions?.EXT_meshopt_compression?.byteStride||v.byteStride||width*4;
-            const dv=new DataView(data.buffer,data.byteOffset,data.byteLength),rows=[];
-            for(let i=0;i<a.count;i++){const row=[];for(let k=0;k<width;k++)row.push(dv.getFloat32((a.byteOffset||0)+i*stride+k*4,true));rows.push(row);}
-            return rows;
-          }
-          const clip=j.animations?.[0],quat=new THREE.Quaternion(),euler=new THREE.Euler();
-          for(const channel of clip.channels) {
-            const node=j.nodes[channel.target.node]?.name||'';
-            if(!/Bip01$|Bip01 [LR] (Thigh|Calf|Foot|Toe0)/.test(node)) continue;
-            const sampler=clip.samplers[channel.sampler],times=(await accessor(sampler.input)).flat(),values=await accessor(sampler.output);
-            const ix=[0,Math.floor((times.length-1)*.125),Math.floor((times.length-1)*.25),Math.floor((times.length-1)*.375),Math.floor((times.length-1)*.5),Math.floor((times.length-1)*.625),Math.floor((times.length-1)*.75),Math.floor((times.length-1)*.875),times.length-1];
-            const samples=ix.map(i=>{
-              const v=values[i];
-              if(channel.target.path==='rotation'){quat.set(v[0],v[1],v[2],v[3]);euler.setFromQuaternion(quat,'XYZ');return [euler.x,euler.y,euler.z].map(x=>(x*180/Math.PI).toFixed(1)).join('/');
-              }
-              return v.map(x=>x.toFixed(3)).join('/');
-            }).join(' | ');
-            console.log('WALK_SAMPLES',node,channel.target.path,'FRAMES',times.length,'DURATION',times.at(-1).toFixed(3),samples);
+          function read(path){const b=fs.readFileSync(path),n=b.readUInt32LE(12);return JSON.parse(b.toString('utf8',20,20+n).trim());}
+          const model=read('src/Business_Female_02.glb'),walk=read('src/f_walk_neutral_01.glb'),idle=read('src/f_idle_neutral_01.glb');
+          const byName=nodes=>new Map((nodes||[]).filter(n=>n.name).map(n=>[n.name,n]));
+          const mn=byName(model.nodes);
+          const targets=[...mn.keys()].filter(n=>/Bip01$|Bip01 (Pelvis|Spine|L Thigh|R Thigh|L Calf|R Calf|L Foot|R Foot|L UpperArm|R UpperArm)/.test(n));
+          function diff(a,b){a=a||[0,0,0,1];b=b||[0,0,0,1];const dot=Math.abs(a.reduce((s,x,i)=>s+x*b[i],0));return 2*Math.acos(Math.min(1,dot))*180/Math.PI;}
+          for(const [label,clip] of [['WALK',walk],['IDLE',idle]]){
+            const cn=byName(clip.nodes);
+            console.log('BIND_POSE_COMPARE',label);
+            for(const name of targets){const a=mn.get(name),b=cn.get(name);if(!b)continue;console.log(name,'ANGLE_DIFF',diff(a.rotation,b.rotation).toFixed(2),'MODEL',JSON.stringify(a.rotation||[0,0,0,1]),'ANIMATION',JSON.stringify(b.rotation||[0,0,0,1]));}
           }
           NODE
       - name: Build game
