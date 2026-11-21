@@ -764,7 +764,7 @@ function refreshInventory(){
  const icon=document.getElementById('ska-action-weapon-icon');if(icon)icon.textContent=equippedItem?equippedItem.icon:'✊';punchButton.title=equippedItem?equippedItem.name:'MUKKA';
 }
 wireButtonAction(backpackButton,()=>{inventoryPanel.style.display=inventoryPanel.style.display==='block'?'none':'block';refreshInventory();});inventoryPanel.querySelector('#ska-bag-close').addEventListener('click',()=>inventoryPanel.style.display='none');
-const weaponSelectButton=makeActionButton('BAG','auto','auto','#b18a42dd');weaponSelectButton.id='ska-weapon-select';weaponSelectButton.style.left='98px';weaponSelectButton.style.right='auto';weaponSelectButton.style.transform='none';weaponSelectButton.style.top='92px';weaponSelectButton.style.bottom='auto';weaponSelectButton.innerHTML='<span style="font-size:28px;line-height:1">▣</span>';weaponSelectButton.title='LOADOUT';weaponSelectButton.setAttribute('aria-label','Open loadout');
+const weaponSelectButton=makeActionButton('BAG','auto','auto','#b18a42dd');weaponSelectButton.id='ska-weapon-select';weaponSelectButton.style.left='98px';weaponSelectButton.style.right='auto';weaponSelectButton.style.transform='none';weaponSelectButton.style.top='92px';weaponSelectButton.style.bottom='auto';weaponSelectButton.innerHTML='<span style="font-size:25px;line-height:1">🎒</span><span style="font:900 10px Arial;margin-left:3px">BAG</span>';weaponSelectButton.title='BAG';weaponSelectButton.setAttribute('aria-label','Open bag');
 wireButtonAction(weaponSelectButton,()=>{inventoryPanel.style.display=inventoryPanel.style.display==='block'?'none':'block';refreshInventory();});
 
 jumpButton.id='ska-jump';
@@ -879,7 +879,7 @@ wireButtonAction(punchButton,()=>{
  if(!gameStarted||isDriving||isSitting||playerStance!=='stand'||jumpActive||sitStandBusy)return;
  // Always swing the visible character arm; imported punch clip is supplemental.
  punchTimer=.42;
- if(punchAction){punchPlaying=true;if(activeCharacterAction&&activeCharacterAction!==punchAction)activeCharacterAction.fadeOut(.08);punchAction.reset().setEffectiveWeight(1).fadeIn(.08).play();activeCharacterAction=punchAction;characterAnimationState='punch';}
+ if(punchAction){punchPlaying=true;punchAction.stopFading();punchAction.enabled=true;punchAction.paused=false;punchAction.setLoop(THREE.LoopOnce,1);punchAction.clampWhenFinished=true;if(activeCharacterAction&&activeCharacterAction!==punchAction)activeCharacterAction.fadeOut(.08);punchAction.reset().setEffectiveTimeScale(1.15).setEffectiveWeight(1).fadeIn(.08).play();activeCharacterAction=punchAction;characterAnimationState='punch';}
  toast(equippedItem?equippedItem.name:'Mukka');
 });
 wireButtonAction(jumpButton,()=>{
@@ -1120,13 +1120,13 @@ if(pickupLabel.style.display==='block'){const p=roadPickup.position.clone();p.y+
  // Low, forward-leaning stealth gait: bend at hips/spine and keep arms loose,
  // while the filtered walk clip supplies alternating leg steps.
  // Punch motion now comes from the uploaded cross-right GLB clip, not a procedural arm swing.
- if(false&&proceduralRigBones.length&&crouchWalkPoseBlend>.001){
+ if(proceduralRigBones.length&&crouchWalkPoseBlend>.001){
   for(const e of proceduralRigBones){
    let pose=0;
-   if(e.role==='hips')pose=.34;
-   else if(e.role==='spine')pose=.27;
-   else if(e.role==='arm')pose=-.22+Math.sin(walkTime*.85)*.12*e.side;
-   else if(e.role==='forearm')pose=-.28;
+   if(e.role==='hips')pose=.52;
+   else if(e.role==='spine')pose=.38;
+   else if(e.role==='arm')pose=-.24+Math.sin(walkTime*.85)*.08*e.side;
+   else if(e.role==='forearm')pose=-.24;
    e.bone.rotation.x+=pose*crouchWalkPoseBlend;
    e.appliedOffset+=pose*crouchWalkPoseBlend;
   }
@@ -1143,7 +1143,7 @@ if(pickupLabel.style.display==='block'){const p=roadPickup.position.clone();p.y+
   }
  }
  if(moving){
-  const sprinting=keys.shift||joystickStrength>0.72;
+  const sprinting=keys.shift||joystickStrength>0.9;
   const runBlend=THREE.MathUtils.smoothstep(joystickStrength,0.88,1);
   const stanceSpeed=playerStance==='prone'?.28:playerStance==='crouch'?.62:1;
   if(isDriving&&activeVehicle){
@@ -1204,8 +1204,14 @@ if(pickupLabel.style.display==='block'){const p=roadPickup.position.clone();p.y+
   torso.position.y=THREE.MathUtils.damp(torso.position.y,0,10,dt);
   torso.rotation.x=THREE.MathUtils.damp(torso.rotation.x,0,8,dt);
  }
- // Fallback short fist swing while the uploaded action is unavailable.
- if(punchTimer>0){const swing=Math.sin(Math.min(1,punchTimer/.34)*Math.PI);rightArm.rotation.x=-1.15*swing;rightArm.rotation.z=-.3*swing;}
+ // Fallback punch pose is applied to the visible imported character rig, not the hidden placeholder arms.
+ if(!punchAction&&punchTimer>0){
+  const swing=Math.sin(Math.min(1,punchTimer/.42)*Math.PI);
+  for(const e of proceduralRigBones){
+   if(e.role==='arm'&&e.side===-1){const pose=-1.05*swing;e.bone.rotation.x+=pose;e.appliedOffset+=pose;}
+   else if(e.role==='forearm'&&e.side===-1){const pose=-.48*swing;e.bone.rotation.x+=pose;e.appliedOffset+=pose;}
+  }
+ }
  const horizontalDistance=Math.cos(cameraPitch)*cameraDistance;
  desiredCamera.set(
   player.position.x+Math.sin(cameraYaw)*horizontalDistance,
