@@ -934,7 +934,7 @@ hud.style.cssText='position:fixed;top:max(14px,env(safe-area-inset-top));left:ma
 hud.innerHTML='<strong style="font-size:17px;letter-spacing:1.4px">SKA ADVENTURE</strong><div style="margin-top:5px;color:#d6e2e7">OPEN WORLD · CITY DISTRICT</div>';
 app.appendChild(hud);
 const hint=document.createElement('div');
-hint.style.cssText='position:fixed;left:50%;transform:translateX(-50%);bottom:max(12px,env(safe-area-inset-bottom));z-index:4;padding:8px 11px;border-radius:9px;background:#15232bd9;color:#fff;font-size:clamp(10px,2.5vw,12px);border:1px solid #ffffff45;white-space:nowrap;pointer-events:none';
+hint.style.cssText='position:fixed;left:50%;transform:translateX(-50%);bottom:max(76px,calc(env(safe-area-inset-bottom) + 70px));z-index:4;padding:8px 11px;border-radius:9px;background:#15232bd9;color:#fff;font-size:clamp(10px,2.5vw,12px);border:1px solid #ffffff45;white-space:normal;text-align:center;max-width:76vw;pointer-events:none';
 hint.style.display='none';
 hint.textContent='Move: joystick · Hold RUN to sprint · Drag: 360° camera';
 app.appendChild(hint);
@@ -952,7 +952,9 @@ const map2Colors=[];
 for(let i=0;i<map2Positions.count;i++){
  const x=map2Positions.getX(i),z=-map2Positions.getY(i);
  const ridge=Math.max(0,1-Math.abs(Math.hypot(x,z)-175)/90);
- const elevation=Math.sin(x*.018)*1.2+Math.cos(z*.021)*1.2+ridge*12-2.4;
+ const hillA=22*Math.exp(-((x-92)**2+(z+55)**2)/4200);
+ const hillB=15*Math.exp(-((x+105)**2+(z-95)**2)/3600);
+ const elevation=Math.sin(x*.018)*1.7+Math.cos(z*.021)*1.8+ridge*10+hillA+hillB-3.8;
  map2Positions.setZ(i,elevation);
  const shade=THREE.MathUtils.clamp(.72+elevation*.012+(Math.sin(x*.13+z*.08)*.045),.55,1.12);
  map2Colors.push(.20*shade,.31*shade,.16*shade);
@@ -960,7 +962,13 @@ for(let i=0;i<map2Positions.count;i++){
 map2GroundGeometry.setAttribute('color',new THREE.Float32BufferAttribute(map2Colors,3));
 map2GroundGeometry.computeVertexNormals();
 map2GroundGeometry.rotateX(-Math.PI/2);
-const map2Ground=new THREE.Mesh(map2GroundGeometry,new THREE.MeshStandardMaterial({vertexColors:true,roughness:1}));
+const map2TextureCanvas=document.createElement('canvas');map2TextureCanvas.width=map2TextureCanvas.height=512;
+const map2TextureContext=map2TextureCanvas.getContext('2d');
+const map2TexturePixels=map2TextureContext.createImageData(512,512);
+for(let p=0;p<map2TexturePixels.data.length;p+=4){const grain=Math.random()*34;map2TexturePixels.data[p]=58+grain;map2TexturePixels.data[p+1]=79+grain;map2TexturePixels.data[p+2]=43+grain*.55;map2TexturePixels.data[p+3]=255;}
+map2TextureContext.putImageData(map2TexturePixels,0,0);
+const map2GroundTexture=new THREE.CanvasTexture(map2TextureCanvas);map2GroundTexture.wrapS=map2GroundTexture.wrapT=THREE.RepeatWrapping;map2GroundTexture.repeat.set(14,14);map2GroundTexture.colorSpace=THREE.SRGBColorSpace;
+const map2Ground=new THREE.Mesh(map2GroundGeometry,new THREE.MeshStandardMaterial({map:map2GroundTexture,vertexColors:true,roughness:1}));
 map2Ground.receiveShadow=true;map2World.add(map2Ground);
 const map2TrailPoints=[];
 for(let i=0;i<=24;i++){
@@ -971,22 +979,30 @@ for(let i=0;i<=24;i++){
 const map2TrailCurve=new THREE.CatmullRomCurve3(map2TrailPoints);
 const map2Trail=new THREE.Mesh(new THREE.TubeGeometry(map2TrailCurve,180,2.5,8,false),new THREE.MeshStandardMaterial({color:0x75634a,roughness:1}));
 map2Trail.position.y=-.15;map2Trail.receiveShadow=true;map2World.add(map2Trail);
-const map2Bark=new THREE.MeshStandardMaterial({color:0x4a3526,roughness:1});
-const map2LeafMaterials=[0x263f2b,0x304b30,0x3c5734,0x465d39].map(color=>new THREE.MeshStandardMaterial({color,roughness:1}));
+const map2Bark=new THREE.MeshStandardMaterial({color:0x493426,roughness:1});
+const map2LeafMaterials=[0x263d25,0x304b2d,0x3b552f,0x4a6238,0x35472a].map(color=>new THREE.MeshStandardMaterial({color,roughness:.96}));
+const map2CrownGeometry=new THREE.SphereGeometry(2.1,12,10);
 function map2Tree(x,z,scale=1){
  const treeGroup=new THREE.Group();treeGroup.position.set(x,0,z);treeGroup.scale.setScalar(scale);map2World.add(treeGroup);
- const trunk=new THREE.Mesh(new THREE.CylinderGeometry(.22,.38,5.4,9),map2Bark);trunk.position.y=2.7;trunk.castShadow=true;treeGroup.add(trunk);
- for(let layer=0;layer<4;layer++){
-  const crown=new THREE.Mesh(new THREE.IcosahedronGeometry(2.25-layer*.18,1),map2LeafMaterials[(Math.abs(Math.floor(x*3+z*2))+layer)%map2LeafMaterials.length]);
-  crown.position.set(Math.sin(layer*2.1)*.55,4.7+layer*1.15,Math.cos(layer*1.7)*.45);
-  crown.scale.set(1.05,.95,1);crown.castShadow=true;treeGroup.add(crown);
+ const trunk=new THREE.Mesh(new THREE.CylinderGeometry(.19,.42,6.2,10),map2Bark);trunk.position.y=3.1;trunk.castShadow=true;treeGroup.add(trunk);
+ for(let branch=0;branch<3;branch++){
+  const limb=new THREE.Mesh(new THREE.CylinderGeometry(.09,.16,2.7,7),map2Bark);
+  limb.position.set(Math.sin(branch*2.1)*.6,3.8+branch*.35,Math.cos(branch*2.1)*.5);
+  limb.rotation.z=(branch-1)*.48;limb.rotation.x=(branch-1)*.28;limb.castShadow=true;treeGroup.add(limb);
+ }
+ for(let cluster=0;cluster<7;cluster++){
+  const crown=new THREE.Mesh(map2CrownGeometry,map2LeafMaterials[(Math.abs(Math.floor(x*3+z*2))+cluster)%map2LeafMaterials.length]);
+  const angle=cluster*2.39996,rad=cluster===0?0:1.1+(cluster%3)*.22;
+  crown.position.set(Math.cos(angle)*rad,5.8+(cluster%4)*.72,Math.sin(angle)*rad);
+  crown.scale.set(.82+(cluster%3)*.16,1.02+(cluster%2)*.12,.85+(cluster%4)*.08);
+  crown.rotation.set(cluster*.21,angle,cluster*.13);crown.castShadow=true;treeGroup.add(crown);
  }
 }
-for(let i=0;i<150;i++){
- const angle=i*2.399963,rad=34+((i*37)%205);
+for(let i=0;i<118;i++){
+ const angle=i*2.399963,rad=42+((i*37)%190);
  const x=Math.cos(angle)*rad,z=Math.sin(angle)*rad;
- if(Math.abs(x-Math.sin((220-z)/18*.24)*20+5)<9)continue;
- map2Tree(x,z,.75+((i*13)%55)/100);
+ if(Math.abs(x-Math.sin((220-z)/18*.24)*20+5)<13)continue;
+ map2Tree(x,z,.8+((i*13)%48)/100);
 }
 const map2RockLoader=new GLTFLoader();
 map2RockLoader.setMeshoptDecoder(MeshoptDecoder);
@@ -1013,7 +1029,9 @@ function setWorldMap(mapId){
  scene.background=new THREE.Color(wildlands?0x91a69a:0x9eb8c8);
  scene.fog.color.set(wildlands?0x91a69a:0x9eb8c8);
  scene.fog.density=wildlands?.0035:.0028;
- mapPanel.querySelector('div').textContent=wildlands?'WILDLANDS MAP':'CITY MAP';
+ mapPanel.querySelector('div').textContent=wildlands?'WILDLANDS · MAP 02':'CITY DISTRICT · MAP 01';
+ hud.querySelector('div').textContent=wildlands?'WILDLANDS · FOREST & HILLS':'OPEN WORLD · CITY DISTRICT';
+ hint.style.display=wildlands?'none':(gameStarted?'block':'none');
 }
 
 /* Full-screen SKA lobby with a central 3D avatar and full game-home menus. */
@@ -1064,7 +1082,7 @@ lobbyReturnButton.id='ska-return-lobby';
 lobbyReturnButton.type='button';
 lobbyReturnButton.textContent='⌂  LOBBY';
 lobbyReturnButton.setAttribute('aria-label','Return to game lobby');
-lobbyReturnButton.style.cssText='position:fixed;top:max(12px,env(safe-area-inset-top));left:max(12px,env(safe-area-inset-left));z-index:2147483647;display:none;pointer-events:auto;padding:10px 15px;border:1px solid #f2cf70;border-radius:10px;background:linear-gradient(120deg,#172a37ed,#101923ed);color:#fff;font:900 13px Arial,sans-serif;letter-spacing:1px;box-shadow:0 4px 16px #0008;touch-action:manipulation';
+lobbyReturnButton.style.cssText='position:fixed;top:max(76px,calc(env(safe-area-inset-top) + 66px));left:50%;transform:translateX(-50%);z-index:2147483647;display:none;pointer-events:auto;padding:10px 15px;border:1px solid #f2cf70;border-radius:10px;background:linear-gradient(120deg,#172a37ed,#101923ed);color:#fff;font:900 13px Arial,sans-serif;letter-spacing:1px;box-shadow:0 4px 16px #0008;touch-action:manipulation';
 hudRoot.appendChild(lobbyReturnButton);
 lobbyReturnButton.addEventListener('click',async()=>{
  gameStarted=false;
@@ -1350,10 +1368,11 @@ if(pickupLabel.style.display==='block'){const p=roadPickup.position.clone();p.y+
    else if(e.role==='forearm'&&e.side===-1){const pose=-.48*swing;e.bone.rotation.x+=pose;e.appliedOffset+=pose;}
   }
  }
- const horizontalDistance=Math.cos(cameraPitch)*cameraDistance;
+ const currentCameraDistance=gameStarted&&map2World.visible?Math.min(cameraDistance,6.2):cameraDistance;
+ const horizontalDistance=Math.cos(cameraPitch)*currentCameraDistance;
  desiredCamera.set(
   player.position.x+Math.sin(cameraYaw)*horizontalDistance,
-  player.position.y+2.2+Math.sin(cameraPitch)*cameraDistance,
+  player.position.y+1.65+Math.sin(cameraPitch)*currentCameraDistance,
   player.position.z+Math.cos(cameraYaw)*horizontalDistance
  );
  camera.position.lerp(desiredCamera,1-Math.exp(-4*dt));
