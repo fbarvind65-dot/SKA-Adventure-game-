@@ -5,7 +5,6 @@ import playerModelUrl from './Business_Female_02.glb?url';
 import idleAnimationUrl from './f_idle_neutral_01.glb?url';
 import walkAnimationUrl from './f_walk_neutral_01.glb?url';
 import runAnimationUrl from './f_run_neutral_01.glb?url';
-import sitStandBundleUrl from './Business_Female_02-rigged-animated.glb?url';
 
 const app = document.querySelector('#app');
 document.body.style.cssText = 'margin:0;overflow:hidden;background:#9bb8c7;font-family:Arial,sans-serif;overscroll-behavior:none;touch-action:none';
@@ -310,7 +309,7 @@ let proceduralRigBones = [];
 let characterActions = {};
 let activeCharacterAction = null;
 let characterAnimationState = '';
-let sitAction=null, standAction=null, sitStandBusy=false, isSitting=false, sitStandButton=null;
+let crouchPoseBlend=0, pronePoseBlend=0, stanceAfterJump='stand';
 const characterLoader = new GLTFLoader();
 characterLoader.setMeshoptDecoder(MeshoptDecoder);
 characterLoader.load(playerModelUrl, (gltf) => {
@@ -327,18 +326,18 @@ characterLoader.load(playerModelUrl, (gltf) => {
   if(object.isBone){
    const n=object.name.toLowerCase().replace(/[^a-z0-9]/g,'');
    let role='',side=1,amp=.55;
-   if(/pelvis/.test(n)){role='hips';amp=.18;}
+   if(/hips|pelvis/.test(n)){role='hips';amp=.18;}
    else if(/spine/.test(n)){role='spine';amp=.16;}
    else if(/head|neck/.test(n)){role='head';amp=.08;}
-   else if(/bip01lthigh|lthigh|leftthigh/.test(n)){role='leg';side=1;amp=.62;}
-   else if(/bip01rthigh|rthigh|rightthigh/.test(n)){role='leg';side=-1;amp=.62;}
-   else if(/bip01lcalf|lcalf|leftcalf/.test(n)){role='knee';side=1;amp=.48;}
-   else if(/bip01rcalf|rcalf|rightcalf/.test(n)){role='knee';side=-1;amp=.48;}
-   else if(/bip01lupperarm|lupperarm|leftupperarm/.test(n)){role='arm';side=1;amp=.4;}
-   else if(/bip01rupperarm|rupperarm|rightupperarm/.test(n)){role='arm';side=-1;amp=.4;}
-   else if(/bip01lforearm|lforearm|leftforearm/.test(n)){role='forearm';side=1;amp=.3;}
-   else if(/bip01rforearm|rforearm|rightforearm/.test(n)){role='forearm';side=-1;amp=.3;}
-   if(role)proceduralRigBones.push({bone:object,base:object.rotation.clone(),role,side,amp});
+   else if(/leftupleg|leftthigh|bip01lthigh|lthigh/.test(n)){role='leg';side=1;amp=.62;}
+   else if(/rightupleg|rightthigh|bip01rthigh|rthigh/.test(n)){role='leg';side=-1;amp=.62;}
+   else if(/leftcalf|leftleg|bip01lcalf|lcalf/.test(n)){role='knee';side=1;amp=.48;}
+   else if(/rightcalf|rightleg|bip01rcalf|rcalf/.test(n)){role='knee';side=-1;amp=.48;}
+   else if(/leftupperarm|bip01lupperarm|lupperarm|leftarm/.test(n)){role='arm';side=1;amp=.4;}
+   else if(/rightupperarm|bip01rupperarm|rupperarm|rightarm/.test(n)){role='arm';side=-1;amp=.4;}
+   else if(/leftforearm|bip01lforearm|lforearm/.test(n)){role='forearm';side=1;amp=.3;}
+   else if(/rightforearm|bip01rforearm|rforearm/.test(n)){role='forearm';side=-1;amp=.3;}
+   if(role)proceduralRigBones.push({bone:object,base:object.rotation.clone(),role,side,amp,appliedOffset:0});
   }
  });
  player.add(character);
@@ -386,21 +385,6 @@ characterLoader.load(playerModelUrl, (gltf) => {
   characterActions.run = runAction;
   if (characterAnimationState === 'run') setCharacterAnimation('run');
  }, undefined, (error) => console.warn('Run animation GLB could not load:', error));
- // Load the uploaded Sit Down and Stand Up clips from the combined GLB.
- characterLoader.load(sitStandBundleUrl,(bundle)=>{
-  const clips=bundle.animations||[];
-  const sitClip=clips.find(clip=>/sit.?down|sitdown/i.test(clip.name))||clips.find(clip=>/sitting|sit/i.test(clip.name));
-  const standClip=clips.find(clip=>/stand.?up|standup|get.?up/i.test(clip.name));
-  if(!sitClip||!standClip){console.warn('Sit/Stand clips missing in animation GLB:',clips.map(clip=>clip.name));if(sitStandButton)sitStandButton.disabled=true;return;}
-  if(!characterMixer)characterMixer=new THREE.AnimationMixer(character);
-  sitAction=characterMixer.clipAction(sitClip);standAction=characterMixer.clipAction(standClip);
-  for(const action of [sitAction,standAction]){action.setLoop(THREE.LoopOnce,1);action.clampWhenFinished=true;}
-  characterMixer.addEventListener('finished',(event)=>{
-   if(event.action===sitAction){isSitting=true;playerStance='sitting';sitStandBusy=false;if(sitStandButton){sitStandButton.textContent='STAND';sitStandButton.setAttribute('aria-label','Stand up');sitStandButton.title='Stand up';sitStandButton.style.background='#245b48dd';}}
-   if(event.action===standAction){isSitting=false;playerStance='stand';sitStandBusy=false;if(sitStandButton){sitStandButton.textContent='SIT';sitStandButton.setAttribute('aria-label','Sit down');sitStandButton.title='Sit down';sitStandButton.style.background='#17252cdd';}setCharacterAnimation('idle');}
-  });
-  if(sitStandButton){sitStandButton.disabled=false;sitStandButton.textContent='SIT';sitStandButton.setAttribute('aria-label','Sit down');sitStandButton.title='Sit down';}
- },undefined,(error)=>{console.warn('Sit/Stand GLB failed to load:',error);if(sitStandButton)sitStandButton.disabled=true;});
  // Use the uploaded model instead of the procedural placeholder.
  torso.visible = false;
  if (gltf.animations && gltf.animations.length) {
@@ -549,10 +533,15 @@ let jumpVelocity=0, jumpActive=false, isDriving=false, activeVehicle=null, nearb
 let playerStance='stand';
 function setPlayerStance(next){
  playerStance=playerStance===next?'stand':next;
- // Keep the character's full model height; stance changes movement speed only.
  player.scale.set(1,1,1);
+ crouchButton.textContent=playerStance==='crouch'?'STAND':'SIT';
  crouchButton.style.background=playerStance==='crouch'?'#426c8ddd':'#17252cdd';
+ crouchButton.setAttribute('aria-label',playerStance==='crouch'?'Stand up':'Sit down');
+ crouchButton.title=playerStance==='crouch'?'Stand up':'Sit down';
+ proneButton.textContent=playerStance==='prone'?'WAKE':'SLEEP';
  proneButton.style.background=playerStance==='prone'?'#426c8ddd':'#17252cdd';
+ proneButton.setAttribute('aria-label',playerStance==='prone'?'Wake up':'Lie down');
+ proneButton.title=playerStance==='prone'?'Wake up':'Lie down';
 }
 let firstPerson=false, mapOpen=false;
 const mapPanel=document.createElement('div');
@@ -581,20 +570,22 @@ crouchButton.style.font='900 13px Arial,sans-serif';
 crouchButton.style.borderRadius='18px';
 crouchButton.style.background='#17252cdd';
 crouchButton.setAttribute('aria-label','Sit down');crouchButton.title='Sit down';
-sitStandButton=crouchButton;
-sitStandButton.disabled=true;
 crouchButton.addEventListener('click',()=>{
- if(!sitAction||!standAction){setPlayerStance('crouch');return;}
- if(sitStandBusy||!sitAction||!standAction)return;
- sitStandBusy=true;
- const next=isSitting?standAction:sitAction;
- if(activeCharacterAction&&activeCharacterAction!==next)activeCharacterAction.fadeOut(.16);
- next.reset().fadeIn(.16).play();activeCharacterAction=next;
- characterAnimationState=isSitting?'stand-transition':'sit-transition';
- sitStandButton.textContent=isSitting?'GETTING UP…':'SITTING…';
+ if(!isDriving&&!jumpActive)setPlayerStance('crouch');
+});
+proneButton.textContent='SLEEP';
+proneButton.style.font='900 13px Arial,sans-serif';
+proneButton.style.borderRadius='18px';
+proneButton.addEventListener('click',()=>{
+ if(!isDriving&&!jumpActive)setPlayerStance('prone');
 });
 jumpButton.addEventListener('click',()=>{
- if(!jumpActive&&!isDriving){setPlayerStance('stand');jumpVelocity=6.2;jumpActive=true;}
+ if(!jumpActive&&!isDriving){
+  stanceAfterJump=playerStance;
+  setPlayerStance('stand');
+  jumpVelocity=6.2;
+  jumpActive=true;
+ }
 });
 viewButton.addEventListener('click',()=>{
  firstPerson=!firstPerson;
@@ -767,32 +758,36 @@ function animate(){
  if(jumpActive&&!isDriving){
   player.position.y+=jumpVelocity*dt;
   jumpVelocity-=15*dt;
-  if(player.position.y<=0){player.position.y=0;jumpVelocity=0;jumpActive=false;}
+  if(player.position.y<=0){
+    player.position.y=0;jumpVelocity=0;jumpActive=false;
+    if(stanceAfterJump!=='stand')setPlayerStance(stanceAfterJump);
+   }
  }
- if (characterMixer) {
-  if(!sitStandBusy&&!isSitting&&playerStance!=='sitting')setCharacterAnimation(moving ? ((keys.shift || joystickStrength > 0.72) ? 'run' : 'walk') : 'idle');
+ // Remove the prior procedural stance offset before advancing the GLB animation.
+ // This keeps crouch posture from accumulating and lets walk cycles continue.
+ for(const e of proceduralRigBones){
+  if(e.appliedOffset){e.bone.rotation.x-=e.appliedOffset;e.appliedOffset=0;}
+ }
+ if(characterMixer){
+  const sprinting=playerStance==='stand'&&(keys.shift||joystickStrength>0.72);
+  setCharacterAnimation(moving?(sprinting?'run':'walk'):'idle');
   characterMixer.update(dt);
  }
- if(proceduralRigBones.length && (playerStance==='crouch' || playerStance==='prone')){
-  // Imported GLB walk/run clips own the normal gait. Do not overwrite their
-  // bone rotations with a second procedural stride; that caused uneven steps.
-  const crouched=playerStance==='crouch', prone=playerStance==='prone';
+ crouchPoseBlend=THREE.MathUtils.damp(crouchPoseBlend,playerStance==='crouch'?1:0,8,dt);
+ pronePoseBlend=THREE.MathUtils.damp(pronePoseBlend,playerStance==='prone'?1:0,8,dt);
+ if(proceduralRigBones.length){
   for(const e of proceduralRigBones){
-   const b=e.bone,r=e.base;
-   let pose=0;
-   if(crouched){
-    if(e.role==='hips')pose=.32;
-    if(e.role==='leg')pose=.72;
-    if(e.role==='knee')pose=-1.05;
-    if(e.role==='spine')pose=-.18;
-   }else if(prone){
-    if(e.role==='hips')pose=.12;
-    if(e.role==='leg')pose=1.12;
-    if(e.role==='knee')pose=-.75;
-    if(e.role==='spine')pose=-1.12;
-    if(e.role==='head')pose=.48;
-   }
-   b.rotation.x=THREE.MathUtils.damp(b.rotation.x,r.x+pose,9,dt);
+   let crouchPose=0,pronePose=0;
+   if(e.role==='hips'){crouchPose=.14;pronePose=.12;}
+   else if(e.role==='leg'){crouchPose=.86;pronePose=1.12;}
+   else if(e.role==='knee'){crouchPose=-1.28;pronePose=-.75;}
+   else if(e.role==='spine'){crouchPose=-.10;pronePose=-1.12;}
+   else if(e.role==='head'){crouchPose=.06;pronePose=.48;}
+   else if(e.role==='arm'){crouchPose=-.12;}
+   else if(e.role==='forearm'){crouchPose=-.28;}
+   const offset=crouchPose*crouchPoseBlend+pronePose*pronePoseBlend;
+   e.bone.rotation.x+=offset;
+   e.appliedOffset=offset;
   }
  }
  if(moving){
