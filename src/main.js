@@ -75,7 +75,7 @@ fullButton.innerHTML='<svg viewBox="0 0 24 24" width="26" height="26" fill="none
 fullButton.setAttribute('aria-label','Enter fullscreen');
 fullButton.style.cssText='position:fixed;right:max(18px,env(safe-area-inset-right));top:max(14px,env(safe-area-inset-top));z-index:10001;width:52px;height:52px;display:flex;align-items:center;justify-content:center;border:2px solid #ffffffbb;border-radius:16px;background:#15232bd9;color:#fff;touch-action:manipulation;pointer-events:auto';
 hudRoot.appendChild(fullButton);
-fullButton.addEventListener('click',requestLandscape);
+wireButtonAction(fullButton,()=>requestLandscape());
 
 
 scene.add(new THREE.HemisphereLight(0xdceeff,0x65715b,1.65));
@@ -326,17 +326,19 @@ characterLoader.load(playerModelUrl, (gltf) => {
   if(object.isBone){
    const n=object.name.toLowerCase().replace(/[^a-z0-9]/g,'');
    let role='',side=1,amp=.55;
+   // Use only the main spine joint. Rotating Spine1/Spine2 as well made the
+   // upper body twist and caused the head to look sideways during SIT.
    if(/hips|pelvis/.test(n)){role='hips';amp=.18;}
-   else if(/spine/.test(n)){role='spine';amp=.16;}
-   else if(/head|neck/.test(n)){role='head';amp=.08;}
-   else if(/leftupleg|leftthigh|bip01lthigh|lthigh/.test(n)){role='leg';side=1;amp=.62;}
-   else if(/rightupleg|rightthigh|bip01rthigh|rthigh/.test(n)){role='leg';side=-1;amp=.62;}
-   else if(/leftcalf|leftleg|bip01lcalf|lcalf/.test(n)){role='knee';side=1;amp=.48;}
-   else if(/rightcalf|rightleg|bip01rcalf|rcalf/.test(n)){role='knee';side=-1;amp=.48;}
-   else if(/leftupperarm|bip01lupperarm|lupperarm|leftarm/.test(n)){role='arm';side=1;amp=.4;}
-   else if(/rightupperarm|bip01rupperarm|rupperarm|rightarm/.test(n)){role='arm';side=-1;amp=.4;}
-   else if(/leftforearm|bip01lforearm|lforearm/.test(n)){role='forearm';side=1;amp=.3;}
-   else if(/rightforearm|bip01rforearm|rforearm/.test(n)){role='forearm';side=-1;amp=.3;}
+   else if(/^(bip01)?spine$/.test(n)){role='spine';amp=.08;}
+   else if(/bip01lthigh$|leftupleg$|leftthigh$|lthigh$/.test(n)){role='leg';side=1;amp=.52;}
+   else if(/bip01rthigh$|rightupleg$|rightthigh$|rthigh$/.test(n)){role='leg';side=-1;amp=.52;}
+   else if(/bip01lcalf$|leftcalf$|leftleg$|lcalf$/.test(n)){role='knee';side=1;amp=.48;}
+   else if(/bip01rcalf$|rightcalf$|rightleg$|rcalf$/.test(n)){role='knee';side=-1;amp=.48;}
+   else if(/bip01lupperarm$|leftupperarm$|lupperarm$|leftarm$/.test(n)){role='arm';side=1;amp=.3;}
+   else if(/bip01rupperarm$|rightupperarm$|rupperarm$|rightarm$/.test(n)){role='arm';side=-1;amp=.3;}
+   else if(/bip01lforearm$|leftforearm$|lforearm$/.test(n)){role='forearm';side=1;amp=.2;}
+   else if(/bip01rforearm$|rightforearm$|rforearm$/.test(n)){role='forearm';side=-1;amp=.2;}
+   // Head and neck deliberately remain untouched by the procedural stance.
    if(role)proceduralRigBones.push({bone:object,base:object.rotation.clone(),role,side,amp,appliedOffset:0});
   }
  });
@@ -450,16 +452,28 @@ control.style.cssText='position:fixed;left:max(4vw,env(safe-area-inset-left));bo
 const knob=document.createElement('div');
 knob.style.cssText='position:absolute;width:54px;height:54px;left:calc(50% - 27px);top:calc(50% - 27px);border-radius:50%;background:#e8edf0dd;border:2px solid #fff;box-shadow:0 2px 8px #0005';
 control.appendChild(knob); hudRoot.appendChild(control);
-let moveX=0,moveY=0,dragging=false;
+let moveX=0,moveY=0,dragging=false,joystickPointerId=null;
 function joystick(e){
  const r=control.getBoundingClientRect(),radius=r.width/2,limit=radius-29,dx=e.clientX-(r.left+radius),dy=e.clientY-(r.top+radius);
  const len=Math.hypot(dx,dy),scale=len>limit?limit/len:1,x=dx*scale,y=dy*scale;
  knob.style.left=`calc(50% - 27px + ${x}px)`;knob.style.top=`calc(50% - 27px + ${y}px)`;moveX=x/limit;moveY=y/limit;
 }
-control.addEventListener('pointerdown',e=>{dragging=true;control.setPointerCapture(e.pointerId);joystick(e)});
-control.addEventListener('pointermove',e=>{if(dragging)joystick(e)});
-function resetStick(){dragging=false;moveX=moveY=0;knob.style.left='calc(50% - 27px)';knob.style.top='calc(50% - 27px)'}
-control.addEventListener('pointerup',resetStick);control.addEventListener('pointercancel',resetStick);
+control.addEventListener('pointerdown',e=>{
+ if(joystickPointerId!==null)return;
+ joystickPointerId=e.pointerId;dragging=true;
+ control.setPointerCapture(e.pointerId);joystick(e);
+});
+control.addEventListener('pointermove',e=>{
+ if(dragging&&e.pointerId===joystickPointerId)joystick(e);
+});
+function resetStick(e){
+ if(e&&e.pointerId!==joystickPointerId)return;
+ dragging=false;joystickPointerId=null;moveX=moveY=0;
+ knob.style.left='calc(50% - 27px)';knob.style.top='calc(50% - 27px)';
+}
+control.addEventListener('pointerup',resetStick);
+control.addEventListener('pointercancel',resetStick);
+control.addEventListener('lostpointercapture',resetStick);
 const hudStyle=document.createElement('style');
 hudStyle.textContent=`
 /* Landscape HUD: separated zones, no overlapping touch targets. */
@@ -506,10 +520,20 @@ function makeActionButton(label, right, top, color='#17252cdd'){
  b.setAttribute('aria-label',label);
  b.title=label;
  b.style.cssText=`position:fixed;right:${right};top:${top};z-index:10000;width:clamp(56px,10vh,68px);height:clamp(56px,10vh,68px);min-width:56px;min-height:56px;padding:0;display:flex;align-items:center;justify-content:center;border:2px solid #ffffffdd;border-radius:50%;background:${color};color:#fff;box-shadow:0 4px 14px #0009;touch-action:manipulation;visibility:visible;opacity:1;pointer-events:auto`;
- b.addEventListener('pointerdown',e=>e.stopPropagation());
  hudRoot.appendChild(b);
  return b;
 }
+function wireButtonAction(button,action){
+ // Fire on this finger's pointerdown so a second finger can tap controls
+ // while the first finger continues holding the movement joystick.
+ button.addEventListener('pointerdown',e=>{
+  e.preventDefault();e.stopPropagation();
+  if(!button.disabled)action(e);
+ });
+ // Keep keyboard accessibility without double-firing the pointer action.
+ button.addEventListener('click',e=>{
+  if(e.detail===0&&!button.disabled)action(e);
+ });
 const jumpButton=makeActionButton('JUMP','max(22px,env(safe-area-inset-right))','auto');
 jumpButton.id='ska-jump';
 jumpButton.style.bottom='max(7vh,calc(env(safe-area-inset-bottom) + 12px))';
@@ -570,16 +594,17 @@ crouchButton.style.font='900 13px Arial,sans-serif';
 crouchButton.style.borderRadius='18px';
 crouchButton.style.background='#17252cdd';
 crouchButton.setAttribute('aria-label','Sit down');crouchButton.title='Sit down';
-crouchButton.addEventListener('click',()=>{
- if(!isDriving&&!jumpActive)setPlayerStance('crouch');
-});
+crouchButton.addEventListener('click',()=>{});
 proneButton.textContent='SLEEP';
 proneButton.style.font='900 13px Arial,sans-serif';
 proneButton.style.borderRadius='18px';
-proneButton.addEventListener('click',()=>{
+wireButtonAction(crouchButton,()=>{
+ if(!isDriving&&!jumpActive)setPlayerStance('crouch');
+});
+wireButtonAction(proneButton,()=>{
  if(!isDriving&&!jumpActive)setPlayerStance('prone');
 });
-jumpButton.addEventListener('click',()=>{
+wireButtonAction(jumpButton,()=>{
  if(!jumpActive&&!isDriving){
   stanceAfterJump=playerStance;
   setPlayerStance('stand');
@@ -587,26 +612,26 @@ jumpButton.addEventListener('click',()=>{
   jumpActive=true;
  }
 });
-viewButton.addEventListener('click',()=>{
+wireButtonAction(viewButton,()=>{
  firstPerson=!firstPerson;
  cameraDistance=firstPerson?0.25:8.5;
  viewButton.setAttribute('aria-label',firstPerson?'Third-person view':'First-person view');
 });
-mapButton.addEventListener('click',()=>{
+wireButtonAction(mapButton,()=>{
  mapOpen=!mapOpen; mapPanel.style.display=mapOpen?'block':'none';
 });
-resetButton.addEventListener('click',()=>{
+wireButtonAction(resetButton,()=>{
  cameraYaw=0;cameraPitch=.28;cameraDistance=0.5;firstPerson=false;
  viewButton.setAttribute('aria-label','First-person view');
  toast('Camera reset');
 });
-vehicleButton.addEventListener('click',()=>{
+wireButtonAction(vehicleButton,()=>{
  if(!nearbyVehicle||isDriving)return;
  activeVehicle=nearbyVehicle; isDriving=true; player.visible=false;
  player.position.copy(activeVehicle.position);
  toast('Driving · Use joystick to move · EXIT to leave');
 });
-exitVehicleButton.addEventListener('click',()=>{
+wireButtonAction(exitVehicleButton,()=>{
  if(!isDriving||!activeVehicle)return;
  player.position.set(activeVehicle.position.x+2.2,0,activeVehicle.position.z);
  player.visible=true; isDriving=false; activeVehicle=null;
@@ -778,13 +803,12 @@ function animate(){
  if(proceduralRigBones.length){
   for(const e of proceduralRigBones){
    let crouchPose=0,pronePose=0;
-   if(e.role==='hips'){crouchPose=.14;pronePose=.12;}
-   else if(e.role==='leg'){crouchPose=.86;pronePose=1.12;}
-   else if(e.role==='knee'){crouchPose=-1.28;pronePose=-.75;}
-   else if(e.role==='spine'){crouchPose=-.10;pronePose=-1.12;}
-   else if(e.role==='head'){crouchPose=.06;pronePose=.48;}
-   else if(e.role==='arm'){crouchPose=-.12;}
-   else if(e.role==='forearm'){crouchPose=-.28;}
+   if(e.role==='hips'){crouchPose=.12;pronePose=.12;}
+   else if(e.role==='leg'){crouchPose=.52;pronePose=.82;}
+   else if(e.role==='knee'){crouchPose=-.92;pronePose=-.62;}
+   else if(e.role==='spine'){crouchPose=-.035;pronePose=-.42;}
+   else if(e.role==='arm'){crouchPose=-.06;}
+   else if(e.role==='forearm'){crouchPose=-.12;}
    const offset=crouchPose*crouchPoseBlend+pronePose*pronePoseBlend;
    e.bone.rotation.x+=offset;
    e.appliedOffset=offset;
