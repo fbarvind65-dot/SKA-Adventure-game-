@@ -310,7 +310,7 @@ let proceduralRigBones = [];
 let characterActions = {};
 let activeCharacterAction = null;
 let characterAnimationState = '';
-let pronePoseBlend=0;
+let pronePoseBlend=0, crouchWalkPoseBlend=0;
 let sitAction=null, standAction=null, crouchWalkAction=null;
 let sitStandBusy=false, isSitting=false, pendingStanceAfterStand='stand';
 const characterLoader = new GLTFLoader();
@@ -969,6 +969,21 @@ function animate(){
   characterMixer.update(dt);
  }
  pronePoseBlend=THREE.MathUtils.damp(pronePoseBlend,playerStance==='prone'?1:0,8,dt);
+ const crouchWalking=isSitting&&playerStance==='crouch'&&moving&&!sitStandBusy;
+ crouchWalkPoseBlend=THREE.MathUtils.damp(crouchWalkPoseBlend,crouchWalking?1:0,7,dt);
+ // Low, forward-leaning stealth gait: bend at hips/spine and keep arms loose,
+ // while the filtered walk clip supplies alternating leg steps.
+ if(proceduralRigBones.length&&crouchWalkPoseBlend>.001){
+  for(const e of proceduralRigBones){
+   let pose=0;
+   if(e.role==='hips')pose=.34;
+   else if(e.role==='spine')pose=.27;
+   else if(e.role==='arm')pose=-.22+Math.sin(walkTime*.85)*.12*e.side;
+   else if(e.role==='forearm')pose=-.28;
+   e.bone.rotation.x+=pose*crouchWalkPoseBlend;
+   e.appliedOffset+=pose*crouchWalkPoseBlend;
+  }
+ }
  if(proceduralRigBones.length&&playerStance==='prone'){
   for(const e of proceduralRigBones){
    let pose=0;
