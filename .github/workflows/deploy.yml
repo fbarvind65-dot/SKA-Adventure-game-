@@ -56,24 +56,38 @@ jobs:
             const n=b.readUInt32LE(12);
             return JSON.parse(b.toString('utf8',20,20+n).trim());
           }
+          function readChunk(path){
+            const b=fs.readFileSync(path),jsonLength=b.readUInt32LE(12),json=JSON.parse(b.toString('utf8',20,20+jsonLength).trim());
+            const binHeader=20+jsonLength,binLength=b.readUInt32LE(binHeader),binStart=binHeader+8;
+            return {gltf:json,b,binStart,binLength};
+          }
           for(const path of ['src/Business_Female_02.glb','src/Business_Female_02-rigged-animated.glb']){
-            const gltf=read(path);
+            const {gltf,b,binStart}=readChunk(path);
             console.log('RIG_FILE',path,'NODES',gltf.nodes?.length,'SKINS',gltf.skins?.length);
             const parents=new Map();
-            for(let i=0;i<(gltf.nodes||[]).length;i++){
-              for(const child of gltf.nodes[i].children||[])parents.set(child,i);
-            }
+            for(let i=0;i<(gltf.nodes||[]).length;i++)for(const child of gltf.nodes[i].children||[])parents.set(child,i);
             for(let i=0;i<(gltf.nodes||[]).length;i++){
               const n=gltf.nodes[i];
-              if(/bip01|pelvis|hips|spine|thigh|calf|neck|head|clav|upperarm|forearm/i.test(n.name||'')){
+              if(/^(Bip01 (Pelvis|Spine|Spine1|Spine2|Neck|Head|L Thigh|R Thigh|L Calf|R Calf)|mixamorig:(Hips|Spine|Spine1|Spine2|Neck|Head|LeftUpLeg|RightUpLeg|LeftLeg|RightLeg))$/i.test(n.name||'')){
                 console.log('BONE',i,'PARENT',parents.get(i),n.name,'ROT',JSON.stringify(n.rotation||[0,0,0,1]),'POS',JSON.stringify(n.translation||[0,0,0]));
               }
             }
+            const sampleAccessor=index=>{
+              const a=gltf.accessors[index],v=gltf.bufferViews[a.bufferView],offset=binStart+(v.byteOffset||0)+(a.byteOffset||0);
+              const size=({SCALAR:1,VEC2:2,VEC3:3,VEC4:4})[a.type]||1,values=[];
+              const sample=i=>Array.from({length:size},(_,k)=>b.readFloatLE(offset+(i*size+k)*4));
+              return {first:sample(0),last:sample(a.count-1),count:a.count,size};
+            };
             for(const clip of gltf.animations||[]){
               const nodes=new Set();
               for(const channel of clip.channels||[]){
                 const target=gltf.nodes?.[channel.target?.node];
                 if(target)nodes.add(target.name+' '+channel.target.path);
+                if(/Head|Neck|Hips|UpLeg|LeftLeg|RightLeg/i.test(target?.name||'')){
+                  const sampler=clip.samplers[channel.sampler];
+                  const values=sampleAccessor(sampler.output);
+                  console.log('TRACK_SAMPLE',clip.name,target.name,channel.target.path,JSON.stringify(values));
+                }
               }
               console.log('CLIP',clip.name,'TRACKS',clip.channels?.length,'TARGETS',[...nodes].join(' | '));
             }
