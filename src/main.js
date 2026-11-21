@@ -64,6 +64,7 @@ document.addEventListener('fullscreenchange',()=>{
  const fullscreenLayer=document.fullscreenElement||document.body;
  if(hudRoot.parentElement!==fullscreenLayer)fullscreenLayer.appendChild(hudRoot);
  hudRoot.style.display=gameStarted?'block':'none';
+ lobbyReturnButton.style.display=gameStarted?'block':'none';
  hudRoot.style.position='fixed';hudRoot.style.inset='0';hudRoot.style.zIndex='2147483647';
  updateHudLayout();
 });
@@ -791,9 +792,6 @@ viewButton.style.bottom='calc(max(7vh,env(safe-area-inset-bottom)) + clamp(56px,
 const mapButton=makeActionButton('MAP','max(22px,env(safe-area-inset-right))','auto');
 mapButton.id='ska-map';
 mapButton.style.bottom='calc(max(7vh,env(safe-area-inset-bottom)) + (clamp(56px,10vh,68px) + 14px)*2)';
-const resetButton=makeActionButton('RESET','max(22px,env(safe-area-inset-right))','auto');
-resetButton.id='ska-camera-reset';
-resetButton.style.bottom='calc(max(7vh,env(safe-area-inset-bottom)) + (clamp(56px,10vh,68px) + 14px)*3)';
 const vehicleButton=makeActionButton('GET IN','50%','calc(50% + 35px)','#1c6846dd');
 vehicleButton.id='ska-enter-vehicle';
 vehicleButton.style.right='50%'; vehicleButton.style.transform='translateX(50%)';
@@ -921,11 +919,6 @@ wireButtonAction(viewButton,()=>{
 wireButtonAction(mapButton,()=>{
  mapOpen=!mapOpen; mapPanel.style.display=mapOpen?'block':'none';
 });
-wireButtonAction(resetButton,()=>{
- cameraYaw=0;cameraPitch=.24;cameraDistance=8.5;firstPerson=false;
- viewButton.setAttribute('aria-label','First-person view');
- toast('Camera reset');
-});
 wireButtonAction(vehicleButton,()=>{
  if(!nearbyVehicle||isDriving)return;
  activeVehicle=nearbyVehicle; isDriving=true; player.visible=false;
@@ -998,7 +991,7 @@ lobbyReturnButton.type='button';
 lobbyReturnButton.textContent='⌂  LOBBY';
 lobbyReturnButton.setAttribute('aria-label','Return to game lobby');
 lobbyReturnButton.style.cssText='position:fixed;top:max(12px,env(safe-area-inset-top));left:max(12px,env(safe-area-inset-left));z-index:2147483647;display:none;pointer-events:auto;padding:10px 15px;border:1px solid #f2cf70;border-radius:10px;background:linear-gradient(120deg,#172a37ed,#101923ed);color:#fff;font:900 13px Arial,sans-serif;letter-spacing:1px;box-shadow:0 4px 16px #0008;touch-action:manipulation';
-app.appendChild(lobbyReturnButton);
+hudRoot.appendChild(lobbyReturnButton);
 lobbyReturnButton.addEventListener('click',async()=>{
  gameStarted=false;
  lobbyReturnButton.style.display='none';
