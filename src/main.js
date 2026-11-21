@@ -393,7 +393,14 @@ characterLoader.load(playerModelUrl, (gltf) => {
   if (!characterMixer) characterMixer = new THREE.AnimationMixer(character);
   // The player group owns forward motion. Remove the walk file's root translation
   // so the rig cannot drift independently underneath the moving character.
-  walkClip.tracks=walkClip.tracks.filter(track=>!(/^(?:Bip01|RootNode)\.position$/i.test(track.name)));
+  walkClip.tracks=walkClip.tracks.filter(track=>{
+   if(!/\.position$/i.test(track.name))return true;
+   const bone=normalizeBoneName(track.name.slice(0,track.name.lastIndexOf('.'))).replace(/^mixamorig/,'').replace(/^bip01/,'');
+   if(!/^(root|rootnode|hips|pelvis)$/.test(bone))return true;
+   const values=track.values;
+   if(values.length>=3){const x=values[0],z=values[2];for(let i=0;i+2<values.length;i+=3){values[i]=x;values[i+2]=z;}}
+   return true;
+  });
   characterActions.walk = characterMixer.clipAction(walkClip);
   characterActions.walk.setLoop(THREE.LoopRepeat,Infinity);
   const crouchWalkClip=walkClip.clone();
@@ -417,12 +424,14 @@ characterLoader.load(playerModelUrl, (gltf) => {
   }
   // The game moves the player with the joystick. Remove the run file's
   // separate root translation so it cannot slide the rig independently.
-  const rootPositionTracks = runClip.tracks.filter((track) =>
-   /^Bip01\.position$/i.test(track.name)
-  );
-  if (rootPositionTracks.length) {
-   runClip.tracks = runClip.tracks.filter((track) => !rootPositionTracks.includes(track));
-  }
+  runClip.tracks=runClip.tracks.filter(track=>{
+   if(!/\.position$/i.test(track.name))return true;
+   const bone=normalizeBoneName(track.name.slice(0,track.name.lastIndexOf('.'))).replace(/^mixamorig/,'').replace(/^bip01/,'');
+   if(!/^(root|rootnode|hips|pelvis)$/.test(bone))return true;
+   const values=track.values;
+   if(values.length>=3){const x=values[0],z=values[2];for(let i=0;i+2<values.length;i+=3){values[i]=x;values[i+2]=z;}}
+   return true;
+  });
   if (!characterMixer) characterMixer = new THREE.AnimationMixer(character);
   const runAction = characterMixer.clipAction(runClip);
   runAction.timeScale = 1.08;
@@ -800,9 +809,11 @@ function playSitDown(){
  if(sitStandBusy)return;
  if(!sitAction){toast('Sit animation is still loading');return;}
  sitStandBusy=true;
+ playerStance='crouch';updateStanceButtons();
  if(crouchWalkAction)crouchWalkAction.stop();
- if(activeCharacterAction)activeCharacterAction.fadeOut(.14);
- sitAction.reset().setEffectiveTimeScale(1.55).setEffectiveWeight(1).fadeIn(.06).play();
+ if(activeCharacterAction&&activeCharacterAction!==sitAction)activeCharacterAction.fadeOut(.12);
+ sitAction.stopFading();sitAction.enabled=true;sitAction.paused=false;
+ sitAction.reset().setLoop(THREE.LoopOnce,1).setEffectiveTimeScale(1.25).setEffectiveWeight(1).fadeIn(.08).play();
  activeCharacterAction=sitAction;
  characterAnimationState='sit-transition';
  crouchButton.style.filter='brightness(1.35)';
@@ -813,15 +824,16 @@ function playStandUp(nextStance='stand'){
  pendingStanceAfterStand=nextStance;
  sitStandBusy=true;
  if(crouchWalkAction)crouchWalkAction.stop();
- if(activeCharacterAction&&activeCharacterAction!==standAction)activeCharacterAction.fadeOut(.14);
- if(sitAction)sitAction.fadeOut(.14);
- standAction.reset().setEffectiveTimeScale(1.55).setEffectiveWeight(1).fadeIn(.06).play();
+ if(activeCharacterAction&&activeCharacterAction!==standAction)activeCharacterAction.fadeOut(.12);
+ if(sitAction){sitAction.stopFading();sitAction.fadeOut(.12);}
+ standAction.stopFading();standAction.enabled=true;standAction.paused=false;
+ standAction.reset().setLoop(THREE.LoopOnce,1).setEffectiveTimeScale(1.25).setEffectiveWeight(1).fadeIn(.08).play();
  activeCharacterAction=standAction;
  characterAnimationState='stand-transition';
  crouchButton.style.filter='brightness(1.35)';
 }
 function toggleSitStand(){
- if(isSitting)playStandUp('stand');
+ if(playerStance==='crouch'||isSitting)playStandUp('stand');
  else playSitDown();
 }
 let firstPerson=false, mapOpen=false;
@@ -1095,7 +1107,7 @@ if(pickupLabel.style.display==='block'){const p=roadPickup.position.clone();p.y+
    }
   }else{
    if(crouchWalkAction)crouchWalkAction.stop();
-   const sprinting=keys.shift||joystickStrength>0.72;
+   const sprinting=keys.shift||joystickStrength>0.9;
    setCharacterAnimation(moving?(sprinting?'run':'walk'):'idle');
   }
   characterMixer.update(dt);
@@ -1132,7 +1144,7 @@ if(pickupLabel.style.display==='block'){const p=roadPickup.position.clone();p.y+
  }
  if(moving){
   const sprinting=keys.shift||joystickStrength>0.72;
-  const runBlend=THREE.MathUtils.smoothstep(joystickStrength,0.58,1);
+  const runBlend=THREE.MathUtils.smoothstep(joystickStrength,0.88,1);
   const stanceSpeed=playerStance==='prone'?.28:playerStance==='crouch'?.62:1;
   if(isDriving&&activeVehicle){
    const driveSpeed=(5+joystickStrength*5+runBlend*3)*(keys.shift?1.15:1);
@@ -1146,9 +1158,9 @@ if(pickupLabel.style.display==='block'){const p=roadPickup.position.clone();p.y+
   const speed=THREE.MathUtils.lerp(walkSpeed,4.2,runBlend)*(keys.shift?1.05:1)*stanceSpeed;
   // Match the animation cycle to actual movement speed to reduce foot sliding.
   if(playerStance==='crouch'&&crouchWalkAction){
-   crouchWalkAction.setEffectiveTimeScale(THREE.MathUtils.clamp(.78*(speed/1.1),.48,1.05));
+   crouchWalkAction.setEffectiveTimeScale(THREE.MathUtils.clamp(.78*(speed/1.1),.24,1.05));
   }else if(characterAnimationState==='walk'&&characterActions.walk){
-   characterActions.walk.setEffectiveTimeScale(THREE.MathUtils.clamp(speed/1.65,.45,1.3));
+   characterActions.walk.setEffectiveTimeScale(THREE.MathUtils.clamp(speed/1.65,.22,1.3));
   }else if(characterAnimationState==='run'&&characterActions.run){
    characterActions.run.setEffectiveTimeScale(THREE.MathUtils.clamp(speed/4.1,.72,1.25));
   }
