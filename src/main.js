@@ -6,6 +6,7 @@ import idleAnimationUrl from './f_idle_neutral_01.glb?url';
 import walkAnimationUrl from './f_walk_neutral_01.glb?url';
 import runAnimationUrl from './f_run_neutral_01.glb?url';
 import sitStandBundleUrl from './Business_Female_02-rigged-animated.glb?url';
+import crouchWalkAnimationUrl from './Walk_-_crouched_forwards.glb?url';
 
 const app = document.querySelector('#app');
 document.body.style.cssText = 'margin:0;overflow:hidden;background:#9bb8c7;font-family:Arial,sans-serif;overscroll-behavior:none;touch-action:none';
@@ -432,7 +433,7 @@ characterLoader.load(playerModelUrl, (gltf) => {
   const sourceHeight=sourceBounds.getSize(new THREE.Vector3()).y;
   const targetHeightNow=new THREE.Box3().setFromObject(character).getSize(new THREE.Vector3()).y;
   const translationScale=targetHeightNow/Math.max(sourceHeight,.001);
-  const retargetClip=(sourceClip,keepArms=true)=>{
+  const retargetClip=(sourceClip,keepArms=true,sourceBoneMap=sourceBones)=>{
    const clip=sourceClip.clone(),mappedTracks=[];
    for(const track of clip.tracks){
     const split=track.name.lastIndexOf('.');
@@ -445,7 +446,7 @@ characterLoader.load(playerModelUrl, (gltf) => {
     // Sit-down animation folds the forearms/hands together unnaturally.
     // Keep the character's existing relaxed arm pose during sitting.
     if(!keepArms&&/^(leftarm|leftforearm|lefthand|rightarm|rightforearm|righthand|leftshoulder|rightshoulder)$/.test(sourceKey))continue;
-    const sourceBone=sourceBones.get(sourceKey),targetBone=targetBones.get(targetKey);
+    const sourceBone=sourceBoneMap.get(sourceKey),targetBone=targetBones.get(targetKey);
     const targetBind=targetBindPose.get(targetKey);
     if(!sourceBone||!targetBone||!targetBind)continue;
     const sourceParentWorld=sourceBone.parent?sourceBone.parent.getWorldQuaternion(new THREE.Quaternion()):new THREE.Quaternion();
@@ -507,6 +508,26 @@ characterLoader.load(playerModelUrl, (gltf) => {
     setCharacterAnimation('idle');
    }
   });
+  // Retarget the newly uploaded crouched-forward walk onto the same BIP01 rig.
+  characterLoader.load(crouchWalkAnimationUrl,crouchGltf=>{
+   const crouchBones=new Map();
+   crouchGltf.scene.updateMatrixWorld(true);
+   crouchGltf.scene.traverse(object=>{
+    if(object.isBone){
+     const key=normalizeBoneName(object.name).replace(/^mixamorig/,'');
+     crouchBones.set(key,object);
+    }
+   });
+   const sourceCrouchClip=crouchGltf.animations?.find(clip=>/crouch|walk/i.test(clip.name))||crouchGltf.animations?.[0];
+   if(!sourceCrouchClip){console.warn('Crouched walk GLB has no animation clip');toast('Crouch walk clip missing');return;}
+   const mappedCrouchClip=retargetClip(sourceCrouchClip,true,crouchBones);
+   if(!mappedCrouchClip.tracks.length){console.warn('Crouched walk retarget found no matching BIP01 tracks',sourceCrouchClip.tracks.map(t=>t.name));toast('Crouch walk rig mapping failed');return;}
+   if(crouchWalkAction)crouchWalkAction.stop();
+   crouchWalkAction=characterMixer.clipAction(mappedCrouchClip);
+   crouchWalkAction.setLoop(THREE.LoopRepeat,Infinity);
+   crouchWalkAction.timeScale=.78;
+   console.info('Retargeted crouched-forward walk to BIP01:',mappedCrouchClip.tracks.length,'tracks');
+  },undefined,error=>{console.warn('Crouched walk GLB failed to load:',error);toast('Crouch walk animation failed to load');});
   console.info('Retargeted uploaded Sit/Stand clips to BIP01 rig:',sitClip.tracks.length,standClip.tracks.length);
  },undefined,error=>console.warn('Sit/Stand animation bundle failed to load:',error));
  // Use the uploaded model instead of the procedural placeholder.
@@ -963,11 +984,12 @@ function animate(){
  if(characterMixer){
   if(sitStandBusy){
    if(crouchWalkAction)crouchWalkAction.stop();
-  }else if(isSitting&&playerStance==='crouch'){
+  }else if(playerStance==='crouch'){
    if(moving&&crouchWalkAction){
     if(!crouchWalkAction.isRunning())crouchWalkAction.reset().play();
     crouchWalkAction.enabled=true;crouchWalkAction.setEffectiveWeight(.18);
    }else if(crouchWalkAction)crouchWalkAction.stop();
+   if(moving&&sitAction&&sitAction.isRunning())sitAction.stop();
   }else{
    if(crouchWalkAction)crouchWalkAction.stop();
    const sprinting=keys.shift||joystickStrength>0.72;
@@ -978,14 +1000,14 @@ function animate(){
  pronePoseBlend=THREE.MathUtils.damp(pronePoseBlend,playerStance==='prone'?1:0,8,dt);
  punchTimer=Math.max(0,punchTimer-dt);
  const punchStrength=punchTimer>0?Math.sin(Math.min(1,punchTimer/.18)*Math.PI/2)*Math.min(1,punchTimer/.12):0;
- const crouchWalking=isSitting&&playerStance==='crouch'&&moving&&!sitStandBusy;
+ const crouchWalking=playerStance==='crouch'&&moving&&!sitStandBusy;
  crouchWalkPoseBlend=THREE.MathUtils.damp(crouchWalkPoseBlend,crouchWalking?1:0,7,dt);
  // Low, forward-leaning stealth gait: bend at hips/spine and keep arms loose,
  // while the filtered walk clip supplies alternating leg steps.
  if(proceduralRigBones.length&&punchStrength>.001&&!isDriving){
   for(const e of proceduralRigBones){if(e.role==='arm'||e.role==='forearm'){const side=e.side*punchSide;e.bone.rotation.x-=punchStrength*(e.role==='arm'?.72:.38);e.bone.rotation.z+=punchStrength*side*(e.role==='arm'?.42:.24);}}
  }
- if(proceduralRigBones.length&&crouchWalkPoseBlend>.001){
+ if(false&&proceduralRigBones.length&&crouchWalkPoseBlend>.001){
   for(const e of proceduralRigBones){
    let pose=0;
    if(e.role==='hips')pose=.34;
