@@ -534,6 +534,7 @@ function wireButtonAction(button,action){
  button.addEventListener('click',e=>{
   if(e.detail===0&&!button.disabled)action(e);
  });
+}
 const jumpButton=makeActionButton('JUMP','max(22px,env(safe-area-inset-right))','auto');
 jumpButton.id='ska-jump';
 jumpButton.style.bottom='max(7vh,calc(env(safe-area-inset-bottom) + 12px))';
@@ -594,7 +595,6 @@ crouchButton.style.font='900 13px Arial,sans-serif';
 crouchButton.style.borderRadius='18px';
 crouchButton.style.background='#17252cdd';
 crouchButton.setAttribute('aria-label','Sit down');crouchButton.title='Sit down';
-crouchButton.addEventListener('click',()=>{});
 proneButton.textContent='SLEEP';
 proneButton.style.font='900 13px Arial,sans-serif';
 proneButton.style.borderRadius='18px';
