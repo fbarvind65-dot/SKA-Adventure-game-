@@ -326,9 +326,11 @@ characterLoader.load(playerModelUrl, (gltf) => {
   if (object.isMesh) { object.castShadow=true; object.receiveShadow=true; }
   if(object.isBone){
    const n=object.name.toLowerCase().replace(/[^a-z0-9]/g,'');
-   if(/head|neck/.test(n)){
+   // Preserve the full upper-body bind pose while sneaking. A walk/run
+   // clip was rotating the head and shoulders into a sideways photo-like pose.
+   if(/head|neck|spine|clav|upperarm|forearm|hand/.test(n)){
     neutralHeadBones.push({bone:object,base:object.quaternion.clone()});
-    return;
+    if(/head|neck/.test(n))return;
    }
    let role='',side=1,amp=.55;
    // Use only the main spine joint. Rotating Spine1/Spine2 as well made the
@@ -465,20 +467,19 @@ function joystick(e){
 }
 control.addEventListener('pointerdown',e=>{
  if(joystickPointerId!==null)return;
- joystickPointerId=e.pointerId;dragging=true;
- control.setPointerCapture(e.pointerId);joystick(e);
-});
-control.addEventListener('pointermove',e=>{
- if(dragging&&e.pointerId===joystickPointerId)joystick(e);
+ e.preventDefault();
+ joystickPointerId=e.pointerId;dragging=true;joystick(e);
 });
 function resetStick(e){
  if(e&&e.pointerId!==joystickPointerId)return;
  dragging=false;joystickPointerId=null;moveX=moveY=0;
  knob.style.left='calc(50% - 27px)';knob.style.top='calc(50% - 27px)';
 }
-control.addEventListener('pointerup',resetStick);
-control.addEventListener('pointercancel',resetStick);
-control.addEventListener('lostpointercapture',resetStick);
+window.addEventListener('pointermove',e=>{
+ if(dragging&&e.pointerId===joystickPointerId)joystick(e);
+});
+window.addEventListener('pointerup',resetStick);
+window.addEventListener('pointercancel',resetStick);
 const hudStyle=document.createElement('style');
 hudStyle.textContent=`
 /* Landscape HUD: separated zones, no overlapping touch targets. */
@@ -529,13 +530,21 @@ function makeActionButton(label, right, top, color='#17252cdd'){
  return b;
 }
 function wireButtonAction(button,action){
- // Fire on this finger's pointerdown so a second finger can tap controls
- // while the first finger continues holding the movement joystick.
- button.addEventListener('pointerdown',e=>{
-  e.preventDefault();e.stopPropagation();
-  if(!button.disabled)action(e);
- });
- // Keep keyboard accessibility without double-firing the pointer action.
+ // Pointer and touch fallbacks share one short deduplication window.
+ // This lets one finger hold the joystick while another taps a HUD control.
+ let lastInputAt=0;
+ const fire=e=>{
+  const now=performance.now();
+  if(now-lastInputAt<180)return;
+  lastInputAt=now;
+  if(button.disabled)return;
+  if(e.cancelable)e.preventDefault();
+  e.stopPropagation();
+  action(e);
+ };
+ button.addEventListener('pointerdown',fire);
+ button.addEventListener('touchstart',fire,{passive:false});
+ // Keyboard / accessibility activation remains supported.
  button.addEventListener('click',e=>{
   if(e.detail===0&&!button.disabled)action(e);
  });
@@ -800,7 +809,8 @@ function animate(){
  }
  if(characterMixer){
   const sprinting=playerStance==='stand'&&(keys.shift||joystickStrength>0.72);
-  setCharacterAnimation(moving?(sprinting?'run':'walk'):'idle');
+  const animationState=playerStance==='stand'?(moving?(sprinting?'run':'walk'):'idle'):'idle';
+  setCharacterAnimation(animationState);
   characterMixer.update(dt);
  }
  crouchPoseBlend=THREE.MathUtils.damp(crouchPoseBlend,playerStance==='crouch'?1:0,8,dt);
@@ -819,7 +829,12 @@ function animate(){
    else if(e.role==='spine'){crouchPose=-.035;pronePose=-.42;}
    else if(e.role==='arm'){crouchPose=-.06;}
    else if(e.role==='forearm'){crouchPose=-.12;}
-   const offset=crouchPose*crouchPoseBlend+pronePose*pronePoseBlend;
+   let gaitOffset=0;
+   if(playerStance==='crouch'&&moving){
+    if(e.role==='leg')gaitOffset=Math.sin(walkTime*.75)*.16*e.side;
+    if(e.role==='knee')gaitOffset=-Math.max(0,Math.sin(walkTime*.75+(e.side<0?Math.PI:0)))*.12;
+   }
+   const offset=crouchPose*crouchPoseBlend+pronePose*pronePoseBlend+gaitOffset*crouchPoseBlend;
    e.bone.rotation.x+=offset;
    e.appliedOffset=offset;
   }
