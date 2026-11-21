@@ -812,15 +812,22 @@ function setPlayerStance(next){
  updateStanceButtons();
 }
 function playSitDown(){
- // Crouch is a gameplay stance, not a seated transition. Avoid the imported
- // sit clip's arm-spread pose and switch directly to a compact crouch.
- sitStandBusy=false;isSitting=true;playerStance='crouch';
- if(sitAction)sitAction.stop();
+ // Enter the low crouch using the uploaded sit-down pose (arm tracks are
+ // excluded during retargeting), then hold its final frame as crouch idle.
+ if(activeCharacterAction&&activeCharacterAction!==sitAction)activeCharacterAction.fadeOut(.1);
+ Object.values(characterActions).forEach(action=>{if(action)action.fadeOut(.1);});
  if(standAction)standAction.stop();
  if(crouchWalkAction)crouchWalkAction.stop();
+ playerStance='crouch';isSitting=false;sitStandBusy=!!sitAction;
  activeCharacterAction=null;characterAnimationState='';
  updateStanceButtons();
- setCharacterAnimation('idle');
+ if(sitAction){
+  sitAction.stopFading();sitAction.enabled=true;sitAction.paused=false;
+  sitAction.reset().setEffectiveWeight(1).fadeIn(.12).play();
+  activeCharacterAction=sitAction;characterAnimationState='crouch-enter';
+ }else{
+  sitStandBusy=false;isSitting=true;setCharacterAnimation('idle');
+ }
 }
 function playStandUp(nextStance='stand'){
  sitStandBusy=false;isSitting=false;playerStance=nextStance;
@@ -1099,17 +1106,25 @@ if(pickupLabel.style.display==='block'){const p=roadPickup.position.clone();p.y+
      if(activeCharacterAction&&activeCharacterAction!==crouchWalkAction)activeCharacterAction.fadeOut(.12);
      Object.values(characterActions).forEach(action=>{if(action&&action!==crouchWalkAction)action.fadeOut(.12);});
      if(standAction)standAction.fadeOut(.12);
+     if(sitAction)sitAction.stop();
      crouchWalkAction.reset().setEffectiveWeight(1).fadeIn(.12).play();
     }
-    if(sitAction){sitAction.stopFading();sitAction.enabled=true;sitAction.setEffectiveWeight(.08);}
+    // Only the authored crouch-walk clip controls the moving pose.
+    if(sitAction)sitAction.stop();
     crouchWalkAction.enabled=true;crouchWalkAction.setEffectiveWeight(1);
     activeCharacterAction=crouchWalkAction;characterAnimationState='crouch-walk';
    }else{
     if(crouchWalkAction)crouchWalkAction.stop();
-    if(sitAction)sitAction.stop();
     if(activeCharacterAction===crouchWalkAction)activeCharacterAction=null;
-    setCharacterAnimation('idle');
-    characterAnimationState='crouch-idle';
+    // Freeze the final squat pose; do not switch to standing idle.
+    if(sitAction&&isSitting){
+     sitAction.stopFading();sitAction.enabled=true;sitAction.paused=true;
+     sitAction.time=sitAction.getClip().duration;
+     sitAction.setEffectiveWeight(1);sitAction.play();
+     activeCharacterAction=sitAction;characterAnimationState='crouch-idle';
+    }else{
+     setCharacterAnimation('idle');characterAnimationState='crouch-idle';
+    }
    }
   }else{
    if(crouchWalkAction)crouchWalkAction.stop();
@@ -1126,22 +1141,8 @@ if(pickupLabel.style.display==='block'){const p=roadPickup.position.clone();p.y+
  // The uploaded crouch-walk GLB already contains its crouched body pose.
  // Do not add a second procedural hips/spine bend here: stacking both poses
  // was forcing the character into an exaggerated forward lean.
- // Compact crouch pose layered on the walk cycle: knees bent, slight hip
- // lowering, upright torso and arms kept close to the body.
- if(proceduralRigBones.length&&playerStance==='crouch'&&!sitStandBusy){
-  for(const e of proceduralRigBones){
-   let offset=0;
-   // A real squat needs clear hip lowering and a deep knee bend, not
-   // a small walking lean that leaves the character visually upright.
-   if(e.role==='hips')offset=.34;
-   else if(e.role==='leg')offset=.82;
-   else if(e.role==='knee')offset=-1.05;
-   else if(e.role==='spine')offset=.06;
-   else if(e.role==='arm')offset=.16;
-   else if(e.role==='forearm')offset=-.08;
-   e.bone.rotation.x+=offset;e.appliedOffset+=offset;
-  }
- }
+ // Use the authored retargeted crouch clips rather than guessed per-bone
+ // Euler offsets; the character rig's local axes differ by joint.
  if(proceduralRigBones.length&&playerStance==='prone'){
   for(const e of proceduralRigBones){
    let pose=0;
