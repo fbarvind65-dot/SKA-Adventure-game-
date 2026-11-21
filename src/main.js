@@ -605,6 +605,14 @@ function car(x,z,color){
 car(-5.1,-22,0x7f3330); car(5.1,42,0x394b5c);
 car(-5.1,93,0xc1bdb2);
 
+// Roadside collectible and backpack state.
+const roadPickup=new THREE.Group();roadPickup.position.set(.8,.15,14.2);scene.add(roadPickup);
+const pickupMetal=mat(0x303943,.72,.38),pickupGrip=mat(0x5c4736,.05,.8),pickupGlow=mat(0xf2c34d,.2,.45);
+box(roadPickup,.18,.12,.62,pickupMetal,0,.16,0);box(roadPickup,.15,.22,.27,pickupGrip,0,.02,.19);box(roadPickup,.09,.07,.34,pickupMetal,0,.23,-.05);
+const pickupHalo=new THREE.Mesh(new THREE.TorusGeometry(.48,.035,8,32),pickupGlow);pickupHalo.rotation.x=Math.PI/2;pickupHalo.position.y=.03;roadPickup.add(pickupHalo);
+const inventoryItems=[];let equippedItem=null;
+const pickupLabel=document.createElement('div');pickupLabel.textContent='GUN · PICK UP';pickupLabel.style.cssText='position:fixed;transform:translate(-50%,-50%);padding:5px 8px;border-radius:7px;background:#14232ddd;color:#ffe18a;font:900 11px Arial;white-space:nowrap;pointer-events:none;display:none;z-index:10001';hudRoot.appendChild(pickupLabel);
+
 // World interaction and responsive controls.
 const keys={};
 addEventListener('keydown',e=>{keys[e.key.toLowerCase()]=true; if(['arrowup','arrowdown','arrowleft','arrowright',' '].includes(e.key.toLowerCase()))e.preventDefault();});
