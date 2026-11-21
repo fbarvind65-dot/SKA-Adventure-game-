@@ -5,6 +5,7 @@ import playerModelUrl from './Business_Female_02.glb?url';
 import idleAnimationUrl from './f_idle_neutral_01.glb?url';
 import walkAnimationUrl from './f_walk_neutral_01.glb?url';
 import runAnimationUrl from './f_run_neutral_01.glb?url';
+import sitStandBundleUrl from './Business_Female_02-rigged-animated.glb?url';
 
 const app = document.querySelector('#app');
 document.body.style.cssText = 'margin:0;overflow:hidden;background:#9bb8c7;font-family:Arial,sans-serif;overscroll-behavior:none;touch-action:none';
@@ -309,6 +310,7 @@ let proceduralRigBones = [];
 let characterActions = {};
 let activeCharacterAction = null;
 let characterAnimationState = '';
+let sitAction=null, standAction=null, sitStandBusy=false, isSitting=false, sitStandButton=null;
 const characterLoader = new GLTFLoader();
 characterLoader.setMeshoptDecoder(MeshoptDecoder);
 characterLoader.load(playerModelUrl, (gltf) => {
@@ -384,6 +386,21 @@ characterLoader.load(playerModelUrl, (gltf) => {
   characterActions.run = runAction;
   if (characterAnimationState === 'run') setCharacterAnimation('run');
  }, undefined, (error) => console.warn('Run animation GLB could not load:', error));
+ // Load the uploaded Sit Down and Stand Up clips from the combined GLB.
+ characterLoader.load(sitStandBundleUrl,(bundle)=>{
+  const clips=bundle.animations||[];
+  const sitClip=clips.find(clip=>/sit.?down|sitdown/i.test(clip.name))||clips.find(clip=>/sitting|sit/i.test(clip.name));
+  const standClip=clips.find(clip=>/stand.?up|standup|get.?up/i.test(clip.name));
+  if(!sitClip||!standClip){console.warn('Sit/Stand clips missing in animation GLB:',clips.map(clip=>clip.name));if(sitStandButton)sitStandButton.disabled=true;return;}
+  if(!characterMixer)characterMixer=new THREE.AnimationMixer(character);
+  sitAction=characterMixer.clipAction(sitClip);standAction=characterMixer.clipAction(standClip);
+  for(const action of [sitAction,standAction]){action.setLoop(THREE.LoopOnce,1);action.clampWhenFinished=true;}
+  characterMixer.addEventListener('finished',(event)=>{
+   if(event.action===sitAction){isSitting=true;playerStance='sitting';sitStandBusy=false;if(sitStandButton)sitStandButton.textContent='STAND';}
+   if(event.action===standAction){isSitting=false;playerStance='stand';sitStandBusy=false;if(sitStandButton)sitStandButton.textContent='SIT';setCharacterAnimation('idle');}
+  });
+  if(sitStandButton){sitStandButton.disabled=false;sitStandButton.textContent='SIT';}
+ },undefined,(error)=>{console.warn('Sit/Stand GLB failed to load:',error);if(sitStandButton)sitStandButton.disabled=true;});
  // Use the uploaded model instead of the procedural placeholder.
  torso.visible = false;
  if (gltf.animations && gltf.animations.length) {
@@ -468,6 +485,7 @@ hudStyle.textContent=`
  #ska-jump{right:4vw!important;bottom:6vh!important;top:auto!important;width:clamp(78px,15vh,100px)!important;height:clamp(78px,15vh,100px)!important}
  #ska-crouch{right:4vw!important;bottom:calc(6vh + 112px)!important;top:auto!important}
  #ska-prone{right:4vw!important;bottom:calc(6vh + 192px)!important;top:auto!important}
+ #ska-sit-stand{right:4vw!important;bottom:calc(6vh + 280px)!important;top:auto!important}
  #ska-map{right:calc(4vw + 92px)!important;bottom:calc(6vh + 140px)!important;top:auto!important}
  #ska-camera-reset{right:calc(4vw + 92px)!important;bottom:calc(6vh + 228px)!important;top:auto!important}
  #ska-fullscreen{right:max(14px,env(safe-area-inset-right))!important;top:max(12px,env(safe-area-inset-top))!important}
@@ -481,6 +499,7 @@ hudStyle.textContent=`
  #ska-jump{right:5vw!important;bottom:calc(8vh + 78px)!important;top:auto!important}
  #ska-crouch{right:5vw!important;bottom:calc(8vh + 156px)!important;top:auto!important}
  #ska-prone{right:5vw!important;bottom:calc(8vh + 234px)!important;top:auto!important}
+ #ska-sit-stand{right:5vw!important;bottom:calc(8vh + 312px)!important;top:auto!important}
  #ska-map{right:calc(5vw + 72px)!important;bottom:calc(8vh + 130px)!important;top:auto!important}
  #ska-camera-reset{right:calc(5vw + 72px)!important;bottom:calc(8vh + 208px)!important;top:auto!important}
  #ska-map-panel{right:5vw!important;top:74px!important}
@@ -561,6 +580,20 @@ proneButton.innerHTML='<svg viewBox="0 0 24 24" width="34" height="34" fill="non
 proneButton.style.bottom='calc(max(7vh,env(safe-area-inset-bottom)) + (clamp(56px,10vh,68px) + 14px)*2)';
 crouchButton.addEventListener('click',()=>setPlayerStance('crouch'));
 proneButton.addEventListener('click',()=>setPlayerStance('prone'));
+sitStandButton=makeActionButton('SIT','max(22px,env(safe-area-inset-right))','auto','#245b48dd');
+sitStandButton.id='ska-sit-stand';
+sitStandButton.textContent='SIT';
+sitStandButton.style.bottom='calc(max(7vh,env(safe-area-inset-bottom)) + (clamp(56px,10vh,68px) + 14px)*3)';
+sitStandButton.style.borderRadius='18px';sitStandButton.style.width='74px';sitStandButton.style.height='54px';sitStandButton.style.font='900 14px Arial,sans-serif';sitStandButton.disabled=true;
+sitStandButton.addEventListener('click',()=>{
+ if(sitStandBusy||!sitAction||!standAction)return;
+ sitStandBusy=true;
+ const next=isSitting?standAction:sitAction;
+ if(activeCharacterAction&&activeCharacterAction!==next)activeCharacterAction.fadeOut(.16);
+ next.reset().fadeIn(.16).play();activeCharacterAction=next;
+ characterAnimationState=isSitting?'stand-transition':'sit-transition';
+ sitStandButton.textContent=isSitting?'GETTING UP…':'SITTING…';
+});
 jumpButton.addEventListener('click',()=>{
  if(!jumpActive&&!isDriving){setPlayerStance('stand');jumpVelocity=6.2;jumpActive=true;}
 });
@@ -738,7 +771,7 @@ function animate(){
   if(player.position.y<=0){player.position.y=0;jumpVelocity=0;jumpActive=false;}
  }
  if (characterMixer) {
-  setCharacterAnimation(moving ? ((keys.shift || joystickStrength > 0.72) ? 'run' : 'walk') : 'idle');
+  if(!sitStandBusy&&!isSitting&&playerStance!=='sitting')setCharacterAnimation(moving ? ((keys.shift || joystickStrength > 0.72) ? 'run' : 'walk') : 'idle');
   characterMixer.update(dt);
  }
  if(proceduralRigBones.length && (playerStance==='crouch' || playerStance==='prone')){
