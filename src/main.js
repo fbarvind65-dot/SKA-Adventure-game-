@@ -397,14 +397,12 @@ characterLoader.load(playerModelUrl, (gltf) => {
  app.appendChild(modelError);
 });
 function setCharacterAnimation(state) {
- if (!characterMixer || characterAnimationState === state) return;
+ if (!characterMixer) return;
  const nextAction = characterActions[state];
- if (!nextAction) {
-  if (activeCharacterAction) activeCharacterAction.stop();
-  activeCharacterAction = null;
-  characterAnimationState = state;
-  return;
- }
+ // Keep the current action until the requested GLB clip has finished loading.
+ // This lets a Run press made during loading switch to Run on the next frame.
+ if (!nextAction) return;
+ if (characterAnimationState === state && activeCharacterAction === nextAction) return;
  if (activeCharacterAction && activeCharacterAction !== nextAction) activeCharacterAction.fadeOut(0.18);
  nextAction.reset().fadeIn(0.18).play();
  activeCharacterAction = nextAction;
