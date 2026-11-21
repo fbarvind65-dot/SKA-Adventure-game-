@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
-import playerModelUrl from './Business_Female_01.glb?url';
+import playerModelUrl from './Business_Female_02.glb?url';
+import idleAnimationUrl from './f_idle_neutral_01.glb?url';
 
 const app = document.querySelector('#app');
 document.body.style.cssText = 'margin:0;overflow:hidden;background:#9bb8c7;font-family:Arial,sans-serif;overscroll-behavior:none;touch-action:none';
@@ -337,6 +338,18 @@ characterLoader.load(playerModelUrl, (gltf) => {
   }
  });
  player.add(character);
+ // Load the separately uploaded idle animation onto the character rig.
+ characterLoader.load(idleAnimationUrl, (idleGltf) => {
+  const idleClip = idleGltf.animations?.find((clip) => /idle|neutral|stand/i.test(clip.name)) || idleGltf.animations?.[0];
+  if (!idleClip) {
+   console.warn('Idle GLB loaded, but it contains no animation clip.');
+   return;
+  }
+  if (!characterMixer) characterMixer = new THREE.AnimationMixer(character);
+  const idleAction = characterMixer.clipAction(idleClip);
+  characterActions.idle = idleAction;
+  if (characterAnimationState === 'idle' || !activeCharacterAction) setCharacterAnimation('idle');
+ }, undefined, (error) => console.warn('Idle animation GLB could not load:', error));
  // Use the uploaded model instead of the procedural placeholder.
  torso.visible = false;
  if (gltf.animations && gltf.animations.length) {
@@ -360,8 +373,14 @@ characterLoader.load(playerModelUrl, (gltf) => {
  app.appendChild(modelError);
 });
 function setCharacterAnimation(state) {
- if (!characterMixer || !characterActions[state] || characterAnimationState === state) return;
+ if (!characterMixer || characterAnimationState === state) return;
  const nextAction = characterActions[state];
+ if (!nextAction) {
+  if (activeCharacterAction) activeCharacterAction.stop();
+  activeCharacterAction = null;
+  characterAnimationState = state;
+  return;
+ }
  if (activeCharacterAction && activeCharacterAction !== nextAction) activeCharacterAction.fadeOut(0.18);
  nextAction.reset().fadeIn(0.18).play();
  activeCharacterAction = nextAction;
