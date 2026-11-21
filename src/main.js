@@ -370,8 +370,18 @@ characterLoader.load(playerModelUrl, (gltf) => {
    console.warn('Run GLB loaded, but it contains no animation clip.');
    return;
   }
+  // The game moves the player with the joystick. Remove the run file's
+  // separate root translation so it cannot slide the rig independently.
+  const rootPositionTracks = runClip.tracks.filter((track) =>
+   /^Bip01\.position$/i.test(track.name)
+  );
+  if (rootPositionTracks.length) {
+   runClip.tracks = runClip.tracks.filter((track) => !rootPositionTracks.includes(track));
+  }
   if (!characterMixer) characterMixer = new THREE.AnimationMixer(character);
-  characterActions.run = characterMixer.clipAction(runClip);
+  const runAction = characterMixer.clipAction(runClip);
+  runAction.timeScale = 1.08;
+  characterActions.run = runAction;
   if (characterAnimationState === 'run') setCharacterAnimation('run');
  }, undefined, (error) => console.warn('Run animation GLB could not load:', error));
  // Use the uploaded model instead of the procedural placeholder.
@@ -778,7 +788,7 @@ function animate(){
    activeVehicle.position.z=THREE.MathUtils.clamp(activeVehicle.position.z+driveZ*driveSpeed*dt,-245,245);
    player.position.copy(activeVehicle.position);
   }else{
-  const speed=(sprinting?8.2:5.2)*stanceSpeed;
+  const speed=(sprinting?6.8:5.2)*stanceSpeed;
   // Keep the player outside parked vehicles instead of allowing the model to pass through them.
   // Translate joystick input relative to the camera: UP always moves away
   // from the camera's view direction, DOWN moves toward it.
