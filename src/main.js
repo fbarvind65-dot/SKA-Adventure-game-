@@ -877,11 +877,15 @@ wireButtonAction(proneButton,()=>{
 });
 wireButtonAction(punchButton,()=>{
  if(!gameStarted||isDriving||isSitting||playerStance!=='stand'||jumpActive||sitStandBusy)return;
- // Always swing the visible character arm; imported punch clip is supplemental.
- punchTimer=.42;
- // Keep the current locomotion clip running; the punch pose is applied directly to the visible rig below.
- punchPlaying=false;
- if(punchAction)punchAction.stop();
+ if(activeCharacterAction&&activeCharacterAction!==punchAction)activeCharacterAction.fadeOut(.08);
+ if(punchAction){
+  punchTimer=0;
+  punchAction.stopFading();punchAction.enabled=true;punchAction.paused=false;
+  punchAction.reset().setLoop(THREE.LoopOnce,1).setEffectiveTimeScale(1).setEffectiveWeight(1).fadeIn(.06).play();
+  punchPlaying=true;activeCharacterAction=punchAction;characterAnimationState='punch';
+ }else{
+  punchTimer=.42;punchPlaying=false;
+ }
  toast(equippedItem?equippedItem.name:'Mukka');
 });
 wireButtonAction(jumpButton,()=>{
@@ -1208,7 +1212,7 @@ if(pickupLabel.style.display==='block'){const p=roadPickup.position.clone();p.y+
  }
  // Fallback punch pose is applied to the visible imported character rig, not the hidden placeholder arms.
  if(punchTimer>0){
-  const swing=Math.sin(Math.min(1,punchTimer/.42)*Math.PI);
+  const swing=punchStrength;
   for(const e of proceduralRigBones){
    if(e.role==='arm'&&e.side===-1){const pose=-1.05*swing;e.bone.rotation.x+=pose;e.appliedOffset+=pose;}
    else if(e.role==='forearm'&&e.side===-1){const pose=-.48*swing;e.bone.rotation.x+=pose;e.appliedOffset+=pose;}
