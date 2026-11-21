@@ -54,7 +54,13 @@ function updateHudLayout(){
 }
 window.addEventListener('resize',updateHudLayout);
 window.addEventListener('orientationchange',()=>setTimeout(updateHudLayout,150));
-document.addEventListener('fullscreenchange',updateHudLayout);
+document.addEventListener('fullscreenchange',()=>{
+ const fullscreenLayer=document.fullscreenElement||document.body;
+ if(hudRoot.parentElement!==fullscreenLayer)fullscreenLayer.appendChild(hudRoot);
+ hudRoot.style.display=gameStarted?'block':'none';
+ hudRoot.style.position='fixed';hudRoot.style.inset='0';hudRoot.style.zIndex='2147483647';
+ updateHudLayout();
+});
 updateHudLayout();
 app.addEventListener('pointerdown',requestLandscape,{once:true});
 
@@ -615,9 +621,10 @@ lobbyScreen.addEventListener('click',e=>{
 lobbyScreen.querySelector('#ska-lobby-close').addEventListener('click',()=>lobbyModal.classList.remove('open'));
 lobbyScreen.querySelector('#ska-lobby-landscape').addEventListener('click',()=>requestLandscape());
 lobbyModal.addEventListener('click',e=>{if(e.target===lobbyModal)lobbyModal.classList.remove('open')});
-lobbyScreen.querySelector('#ska-lobby-play').addEventListener('click',()=>{
- requestLandscape();
+lobbyScreen.querySelector('#ska-lobby-play').addEventListener('click',async()=>{
  gameStarted=true;
+ hudRoot.style.display='block';hud.style.display='block';hint.style.display='block';
+ try{await requestLandscape();}catch(e){console.info('Fullscreen unavailable',e)}
  lobbyScreen.remove();
  lobbyStageBase.visible=false; lobbyStageRing.visible=false;
  vehicles[0].position.copy(lobbyVehicleOriginal);
