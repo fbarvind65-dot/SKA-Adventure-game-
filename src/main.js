@@ -306,6 +306,18 @@ for(const arm of [leftArm,rightArm]){
 }
 player.position.set(0,0,18);
 
+// Visible held weapon attached to the character's right hand.
+const heldWeapon=new THREE.Group();heldWeapon.visible=false;rightArm.add(heldWeapon);
+const weaponDark=new THREE.MeshStandardMaterial({color:0x252b30,metalness:.55,roughness:.42});
+const weaponGrip=new THREE.MeshStandardMaterial({color:0x3b3027,roughness:.8});
+const weaponPart=(w,h,d,material,x,y,z)=>{const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),material);m.position.set(x,y,z);m.castShadow=true;heldWeapon.add(m);return m;};
+weaponPart(.105,.105,.34,weaponDark,0,-.79,-.16);
+weaponPart(.045,.045,.28,weaponDark,0,-.78,-.43);
+weaponPart(.075,.16,.09,weaponGrip,0,-.91,-.08);
+weaponPart(.13,.045,.12,weaponDark,0,-.72,-.02);
+weaponPart(.045,.05,.07,weaponDark,0,-.67,-.04);
+function refreshWeaponVisual(){heldWeapon.visible=!!equippedItem&&equippedItem.type==='gun';}
+
 // Load the uploaded GLB character and use its embedded animations when available.
 let characterMixer = null;
 let proceduralRigBones = [];
@@ -719,7 +731,7 @@ const punchButton=makeActionButton('PUNCH','auto','auto','#8a302ddd');
 punchButton.id='ska-punch';
 punchButton.style.left='18px';punchButton.style.right='auto';punchButton.style.top='92px';punchButton.style.bottom='auto';
 punchButton.innerHTML='<span id="ska-action-weapon-icon" style="font-size:30px;line-height:1">✊</span>';punchButton.title='MUKKA';punchButton.setAttribute('aria-label','MUKKA');
-const backpackButton=makeActionButton('BAG','18px','78px','#214b68dd');backpackButton.id='ska-backpack';backpackButton.innerHTML='<span style="font-size:29px;line-height:1">🎒</span>';backpackButton.title='BAGPACK';backpackButton.setAttribute('aria-label','BAGPACK');
+const backpackButton=makeActionButton('BAG','50%','78px','#214b68dd');backpackButton.id='ska-backpack';backpackButton.style.right='50%';backpackButton.style.transform='translateX(50%)';backpackButton.innerHTML='<span style="font-size:29px;line-height:1">🎒</span>';backpackButton.title='BAGPACK';backpackButton.setAttribute('aria-label','BAGPACK');
 const inventoryPanel=document.createElement('section');inventoryPanel.style.cssText='position:fixed;left:18px;bottom:88px;z-index:10002;width:min(250px,78vw);max-height:42vh;overflow:auto;padding:11px;border:1px solid #ffffff70;border-radius:13px;background:#14232bf2;color:#fff;box-shadow:0 8px 28px #0008;font:13px Arial;display:none;pointer-events:auto';
 inventoryPanel.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;font-weight:900"><span>🎒 INVENTORY</span><button id="ska-bag-close" style="border:1px solid #ffffff55;background:#ffffff15;color:#fff;border-radius:7px;padding:5px 9px">×</button></div><div id="ska-bag-items" style="margin-top:10px;line-height:1.7">No items collected.</div>';hudRoot.appendChild(inventoryPanel);
 const bagItemsNode=inventoryPanel.querySelector('#ska-bag-items');
@@ -781,7 +793,7 @@ function playSitDown(){
  sitStandBusy=true;
  if(crouchWalkAction)crouchWalkAction.stop();
  if(activeCharacterAction)activeCharacterAction.fadeOut(.14);
- sitAction.reset().setEffectiveWeight(1).fadeIn(.14).play();
+ sitAction.reset().setEffectiveTimeScale(1.55).setEffectiveWeight(1).fadeIn(.06).play();
  activeCharacterAction=sitAction;
  characterAnimationState='sit-transition';
  crouchButton.textContent='SITTING…';
@@ -794,7 +806,7 @@ function playStandUp(nextStance='stand'){
  if(crouchWalkAction)crouchWalkAction.stop();
  if(activeCharacterAction&&activeCharacterAction!==standAction)activeCharacterAction.fadeOut(.14);
  if(sitAction)sitAction.fadeOut(.14);
- standAction.reset().setEffectiveWeight(1).fadeIn(.14).play();
+ standAction.reset().setEffectiveTimeScale(1.55).setEffectiveWeight(1).fadeIn(.06).play();
  activeCharacterAction=standAction;
  characterAnimationState='stand-transition';
  crouchButton.textContent='GETTING UP…';
