@@ -697,7 +697,6 @@ hudStyle.textContent=`
  #ska-crouch{right:4vw!important;bottom:calc(6vh + 112px)!important;top:auto!important}
  #ska-prone{right:4vw!important;bottom:calc(6vh + 192px)!important;top:auto!important}
  #ska-map{right:calc(4vw + 92px)!important;bottom:calc(6vh + 140px)!important;top:auto!important}
- #ska-camera-reset{right:calc(4vw + 92px)!important;bottom:calc(6vh + 228px)!important;top:auto!important}
  #ska-fullscreen{right:max(14px,env(safe-area-inset-right))!important;top:max(12px,env(safe-area-inset-top))!important}
  #ska-punch{left:18px!important;right:auto!important;top:92px!important;bottom:auto!important;width:clamp(58px,10vh,72px)!important;height:clamp(58px,10vh,72px)!important} #ska-weapon-select{left:98px!important;right:auto!important;top:92px!important;bottom:auto!important;width:clamp(58px,10vh,72px)!important;height:clamp(58px,10vh,72px)!important}
  #ska-map-panel{right:calc(4vw + 180px)!important;top:12px!important}
@@ -711,7 +710,6 @@ hudStyle.textContent=`
  #ska-crouch{right:5vw!important;bottom:calc(8vh + 156px)!important;top:auto!important}
  #ska-prone{right:5vw!important;bottom:calc(8vh + 234px)!important;top:auto!important}
  #ska-map{right:calc(5vw + 72px)!important;bottom:calc(8vh + 130px)!important;top:auto!important}
- #ska-camera-reset{right:calc(5vw + 72px)!important;bottom:calc(8vh + 208px)!important;top:auto!important}
  #ska-map-panel{right:5vw!important;top:74px!important}
 }
 #ska-action-toast{animation:skaToastFade 1.8s ease forwards}
@@ -723,7 +721,6 @@ document.head.appendChild(hudStyle);
 const actionIcons={
  JUMP:'<svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20V4M5 11l7-7 7 7"/></svg>',
  FPP:'<svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>',
- RESET:'<svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 2.64-6.36L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></svg>',
  MAP:'<svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/></svg>',
  'GET IN':'<svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 13 2-6h14l2 6v6h-3v-2H6v2H3zM5 13h14M7 10h.01M17 10h.01"/></svg>',
  EXIT:'<svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3h6v18h-6M10 17l5-5-5-5M15 12H3"/></svg>'
