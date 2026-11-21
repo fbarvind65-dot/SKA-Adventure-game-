@@ -957,7 +957,7 @@ for(let i=0;i<map2Positions.count;i++){
  const elevation=Math.sin(x*.018)*1.7+Math.cos(z*.021)*1.8+ridge*10+hillA+hillB-3.8;
  map2Positions.setZ(i,elevation);
  const shade=THREE.MathUtils.clamp(.72+elevation*.012+(Math.sin(x*.13+z*.08)*.045),.55,1.12);
- map2Colors.push(.20*shade,.31*shade,.16*shade);
+ map2Colors.push(.82*shade,.94*shade,.72*shade);
 }
 map2GroundGeometry.setAttribute('color',new THREE.Float32BufferAttribute(map2Colors,3));
 map2GroundGeometry.computeVertexNormals();
@@ -965,7 +965,7 @@ map2GroundGeometry.rotateX(-Math.PI/2);
 const map2TextureCanvas=document.createElement('canvas');map2TextureCanvas.width=map2TextureCanvas.height=512;
 const map2TextureContext=map2TextureCanvas.getContext('2d');
 const map2TexturePixels=map2TextureContext.createImageData(512,512);
-for(let p=0;p<map2TexturePixels.data.length;p+=4){const grain=Math.random()*34;map2TexturePixels.data[p]=58+grain;map2TexturePixels.data[p+1]=79+grain;map2TexturePixels.data[p+2]=43+grain*.55;map2TexturePixels.data[p+3]=255;}
+for(let p=0;p<map2TexturePixels.data.length;p+=4){const grain=Math.random()*34;map2TexturePixels.data[p]=94+grain;map2TexturePixels.data[p+1]=123+grain;map2TexturePixels.data[p+2]=68+grain*.55;map2TexturePixels.data[p+3]=255;}
 map2TextureContext.putImageData(map2TexturePixels,0,0);
 const map2GroundTexture=new THREE.CanvasTexture(map2TextureCanvas);map2GroundTexture.wrapS=map2GroundTexture.wrapT=THREE.RepeatWrapping;map2GroundTexture.repeat.set(14,14);map2GroundTexture.colorSpace=THREE.SRGBColorSpace;
 const map2Ground=new THREE.Mesh(map2GroundGeometry,new THREE.MeshStandardMaterial({map:map2GroundTexture,vertexColors:true,roughness:1}));
