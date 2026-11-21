@@ -830,9 +830,10 @@ wireButtonAction(proneButton,()=>{
  }
 });
 wireButtonAction(punchButton,()=>{
- if(!gameStarted||isDriving||isSitting||playerStance!=='stand'||jumpActive||sitStandBusy||punchPlaying)return;
+ if(!gameStarted||isDriving||isSitting||playerStance!=='stand'||jumpActive||sitStandBusy)return;
+ // Always swing the visible character arm; imported punch clip is supplemental.
+ punchTimer=.42;
  if(punchAction){punchPlaying=true;if(activeCharacterAction&&activeCharacterAction!==punchAction)activeCharacterAction.fadeOut(.08);punchAction.reset().setEffectiveWeight(1).fadeIn(.08).play();activeCharacterAction=punchAction;characterAnimationState='punch';}
- else punchTimer=.34;
  toast(equippedItem?equippedItem.name:'Mukka');
 });
 wireButtonAction(jumpButton,()=>{
