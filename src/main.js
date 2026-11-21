@@ -710,7 +710,7 @@ const jumpButton=makeActionButton('JUMP','max(22px,env(safe-area-inset-right))',
 const punchButton=makeActionButton('PUNCH','auto','auto','#8a302ddd');
 punchButton.id='ska-punch';
 punchButton.style.left='18px';punchButton.style.right='auto';punchButton.style.top='92px';punchButton.style.bottom='auto';
-punchButton.innerHTML='<svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 11V6a1.5 1.5 0 0 1 3 0v4-6a1.5 1.5 0 0 1 3 0v6-5a1.5 1.5 0 0 1 3 0v6-3a1.5 1.5 0 0 1 3 0v6c0 4-2.5 7-6.5 7H11c-2 0-3.2-1-4.2-2.5L3.5 14a1.8 1.8 0 0 1 2.8-2.2L8 14"/></svg>';
+punchButton.innerHTML='<span id="ska-action-weapon-icon" style="font-size:30px;line-height:1">✊</span>';punchButton.title='MUKKA';punchButton.setAttribute('aria-label','MUKKA');
 jumpButton.id='ska-jump';
 jumpButton.style.bottom='max(7vh,calc(env(safe-area-inset-bottom) + 12px))';
 const viewButton=makeActionButton('FPP','max(22px,env(safe-area-inset-right))','auto');
@@ -816,12 +816,9 @@ wireButtonAction(proneButton,()=>{
 });
 wireButtonAction(punchButton,()=>{
  if(!gameStarted||isDriving||isSitting||playerStance!=='stand'||jumpActive||sitStandBusy||punchPlaying)return;
- if(!punchAction){toast('Punch animation is loading');return;}
- punchPlaying=true;punchTimer=0;
- if(activeCharacterAction&&activeCharacterAction!==punchAction)activeCharacterAction.fadeOut(.08);
- punchAction.reset().setEffectiveWeight(1).fadeIn(.08).play();
- activeCharacterAction=punchAction;characterAnimationState='punch';
- toast('Punch');
+ if(punchAction){punchPlaying=true;if(activeCharacterAction&&activeCharacterAction!==punchAction)activeCharacterAction.fadeOut(.08);punchAction.reset().setEffectiveWeight(1).fadeIn(.08).play();activeCharacterAction=punchAction;characterAnimationState='punch';}
+ else punchTimer=.34;
+ toast(equippedItem?equippedItem.name:'Mukka');
 });
 wireButtonAction(jumpButton,()=>{
  if(!jumpActive&&!isDriving){
