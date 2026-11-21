@@ -607,6 +607,7 @@ hudStyle.textContent=`
  #ska-map{right:calc(4vw + 92px)!important;bottom:calc(6vh + 140px)!important;top:auto!important}
  #ska-camera-reset{right:calc(4vw + 92px)!important;bottom:calc(6vh + 228px)!important;top:auto!important}
  #ska-fullscreen{right:max(14px,env(safe-area-inset-right))!important;top:max(12px,env(safe-area-inset-top))!important}
+ #ska-punch{left:18px!important;right:auto!important;top:92px!important;bottom:auto!important;width:clamp(58px,10vh,72px)!important;height:clamp(58px,10vh,72px)!important}
  #ska-map-panel{right:calc(4vw + 180px)!important;top:12px!important}
  #ska-enter-vehicle,#ska-exit-vehicle{right:50%!important;top:48%!important;bottom:auto!important}
 }
@@ -665,6 +666,10 @@ function wireButtonAction(button,action){
  });
 }
 const jumpButton=makeActionButton('JUMP','max(22px,env(safe-area-inset-right))','auto');
+const punchButton=makeActionButton('PUNCH','auto','auto','#8a302ddd');
+punchButton.id='ska-punch';
+punchButton.style.left='18px';punchButton.style.right='auto';punchButton.style.top='92px';punchButton.style.bottom='auto';
+punchButton.innerHTML='<svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 11V6a1.5 1.5 0 0 1 3 0v4-6a1.5 1.5 0 0 1 3 0v6-5a1.5 1.5 0 0 1 3 0v6-3a1.5 1.5 0 0 1 3 0v6c0 4-2.5 7-6.5 7H11c-2 0-3.2-1-4.2-2.5L3.5 14a1.8 1.8 0 0 1 2.8-2.2L8 14"/></svg>';
 jumpButton.id='ska-jump';
 jumpButton.style.bottom='max(7vh,calc(env(safe-area-inset-bottom) + 12px))';
 const viewButton=makeActionButton('FPP','max(22px,env(safe-area-inset-right))','auto');
@@ -684,6 +689,7 @@ exitVehicleButton.id='ska-exit-vehicle';
 exitVehicleButton.style.right='50%'; exitVehicleButton.style.transform='translateX(50%)';
 
 let jumpVelocity=0, jumpActive=false, isDriving=false, activeVehicle=null, nearbyVehicle=null;
+let punchTimer=0,punchSide=1;
 let playerStance='stand';
 function updateStanceButtons(){
  crouchButton.textContent=playerStance==='crouch'?'STAND':'SIT';
@@ -767,6 +773,7 @@ wireButtonAction(proneButton,()=>{
   else setPlayerStance('prone');
  }
 });
+wireButtonAction(punchButton,()=>{if(gameStarted&&!isDriving&&!isSitting&&!jumpActive){punchSide*=-1;punchTimer=.48;toast('Punch');}});
 wireButtonAction(jumpButton,()=>{
  if(!jumpActive&&!isDriving){
   if(isSitting)playStandUp('stand');
@@ -969,10 +976,15 @@ function animate(){
   characterMixer.update(dt);
  }
  pronePoseBlend=THREE.MathUtils.damp(pronePoseBlend,playerStance==='prone'?1:0,8,dt);
+ punchTimer=Math.max(0,punchTimer-dt);
+ const punchStrength=punchTimer>0?Math.sin(Math.min(1,punchTimer/.18)*Math.PI/2)*Math.min(1,punchTimer/.12):0;
  const crouchWalking=isSitting&&playerStance==='crouch'&&moving&&!sitStandBusy;
  crouchWalkPoseBlend=THREE.MathUtils.damp(crouchWalkPoseBlend,crouchWalking?1:0,7,dt);
  // Low, forward-leaning stealth gait: bend at hips/spine and keep arms loose,
  // while the filtered walk clip supplies alternating leg steps.
+ if(proceduralRigBones.length&&punchStrength>.001&&!isDriving){
+  for(const e of proceduralRigBones){if(e.role==='arm'||e.role==='forearm'){const side=e.side*punchSide;e.bone.rotation.x-=punchStrength*(e.role==='arm'?.72:.38);e.bone.rotation.z+=punchStrength*side*(e.role==='arm'?.42:.24);}}
+ }
  if(proceduralRigBones.length&&crouchWalkPoseBlend>.001){
   for(const e of proceduralRigBones){
    let pose=0;
