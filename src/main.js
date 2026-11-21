@@ -673,13 +673,13 @@ hudStyle.textContent=`
  #ska-map{right:calc(4vw + 92px)!important;bottom:calc(6vh + 140px)!important;top:auto!important}
  #ska-camera-reset{right:calc(4vw + 92px)!important;bottom:calc(6vh + 228px)!important;top:auto!important}
  #ska-fullscreen{right:max(14px,env(safe-area-inset-right))!important;top:max(12px,env(safe-area-inset-top))!important}
- #ska-punch{left:18px!important;right:auto!important;top:92px!important;bottom:auto!important;width:clamp(58px,10vh,72px)!important;height:clamp(58px,10vh,72px)!important}
+ #ska-punch{left:18px!important;right:auto!important;top:92px!important;bottom:auto!important;width:clamp(58px,10vh,72px)!important;height:clamp(58px,10vh,72px)!important} #ska-weapon-select{left:98px!important;right:auto!important;top:92px!important;bottom:auto!important;width:clamp(58px,10vh,72px)!important;height:clamp(58px,10vh,72px)!important}
  #ska-map-panel{right:calc(4vw + 180px)!important;top:12px!important}
  #ska-enter-vehicle,#ska-exit-vehicle{right:50%!important;top:48%!important;bottom:auto!important}
 }
 /* Portrait fallback: compact controls remain separated until landscape is entered. */
 @media (orientation:portrait) {
- #ska-joystick{left:4vw!important;bottom:8vh!important;width:clamp(112px,16vh,138px)!important;height:clamp(112px,16vh,138px)!important}
+ #ska-joystick{left:4vw!important;bottom:8vh!important;width:clamp(112px,16vh,138px)!important;height:clamp(112px,16vh,138px)!important} #ska-punch{left:14px!important;top:82px!important} #ska-weapon-select{left:82px!important;top:82px!important;right:auto!important;bottom:auto!important}
  #ska-fpp{right:5vw!important;left:auto!important;bottom:8vh!important;top:auto!important}
  #ska-jump{right:5vw!important;bottom:calc(8vh + 78px)!important;top:auto!important}
  #ska-crouch{right:5vw!important;bottom:calc(8vh + 156px)!important;top:auto!important}
@@ -707,7 +707,7 @@ function makeActionButton(label, right, top, color='#17252cdd'){
  b.type='button'; b.innerHTML=actionIcons[label]||'';
  b.setAttribute('aria-label',label);
  b.title=label;
- b.style.cssText=`position:fixed;right:${right};top:${top};z-index:10000;width:clamp(56px,10vh,68px);height:clamp(56px,10vh,68px);min-width:56px;min-height:56px;padding:0;display:flex;align-items:center;justify-content:center;border:2px solid #ffffffdd;border-radius:50%;background:${color};color:#fff;box-shadow:0 4px 14px #0009;touch-action:manipulation;visibility:visible;opacity:1;pointer-events:auto`;
+ b.style.cssText=`position:fixed;right:${right};top:${top};z-index:10000;width:clamp(56px,10vh,68px);height:clamp(56px,10vh,68px);min-width:56px;min-height:56px;padding:0;display:flex;align-items:center;justify-content:center;border:2px solid #ffffffdd;border-radius:18px;background:linear-gradient(145deg,#263b4aee,#101c27ee);color:#f4f7fa;box-shadow:0 5px 16px #000a,inset 0 1px #ffffff30;touch-action:manipulation;visibility:visible;opacity:1;pointer-events:auto`;
  hudRoot.appendChild(b);
  return b;
 }
@@ -736,7 +736,7 @@ const punchButton=makeActionButton('PUNCH','auto','auto','#8a302ddd');
 punchButton.id='ska-punch';
 punchButton.style.left='18px';punchButton.style.right='auto';punchButton.style.top='92px';punchButton.style.bottom='auto';
 punchButton.innerHTML='<span id="ska-action-weapon-icon" style="font-size:30px;line-height:1">✊</span>';punchButton.title='MUKKA';punchButton.setAttribute('aria-label','MUKKA');
-const backpackButton=makeActionButton('BAG','auto','auto','#214b68dd');backpackButton.id='ska-backpack';backpackButton.style.left='calc(50% + 74px)';backpackButton.style.right='auto';backpackButton.style.bottom='18px';backpackButton.style.top='auto';backpackButton.innerHTML='<span style="font-size:29px;line-height:1">🎒</span>';backpackButton.title='BAGPACK';backpackButton.setAttribute('aria-label','BAGPACK');
+const backpackButton=makeActionButton('BAG','auto','auto','#214b68dd');backpackButton.id='ska-backpack';backpackButton.style.display='none';backpackButton.title='';backpackButton.setAttribute('aria-label','');
 const inventoryPanel=document.createElement('section');inventoryPanel.style.cssText='position:fixed;left:18px;bottom:88px;z-index:10002;width:min(250px,78vw);max-height:42vh;overflow:auto;padding:11px;border:1px solid #ffffff70;border-radius:13px;background:#14232bf2;color:#fff;box-shadow:0 8px 28px #0008;font:13px Arial;display:none;pointer-events:auto';
 inventoryPanel.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;font-weight:900"><span>🎒 INVENTORY</span><button id="ska-bag-close" style="border:1px solid #ffffff55;background:#ffffff15;color:#fff;border-radius:7px;padding:5px 9px">×</button></div><div id="ska-bag-items" style="margin-top:10px;line-height:1.7">No items collected.</div>';hudRoot.appendChild(inventoryPanel);
 const bagItemsNode=inventoryPanel.querySelector('#ska-bag-items');
@@ -755,7 +755,7 @@ function refreshInventory(){
  const icon=document.getElementById('ska-action-weapon-icon');if(icon)icon.textContent=equippedItem?equippedItem.icon:'✊';punchButton.title=equippedItem?equippedItem.name:'MUKKA';
 }
 wireButtonAction(backpackButton,()=>{inventoryPanel.style.display=inventoryPanel.style.display==='block'?'none':'block';refreshInventory();});inventoryPanel.querySelector('#ska-bag-close').addEventListener('click',()=>inventoryPanel.style.display='none');
-const weaponSelectButton=makeActionButton('BAG','auto','auto','#4a382bdd');weaponSelectButton.id='ska-weapon-select';weaponSelectButton.style.left='50%';weaponSelectButton.style.right='auto';weaponSelectButton.style.transform='translateX(-50%)';weaponSelectButton.style.bottom='18px';weaponSelectButton.style.top='auto';weaponSelectButton.innerHTML='<span style="font-size:29px">⚔️</span>';weaponSelectButton.title='WEAPONS';weaponSelectButton.setAttribute('aria-label','Weapons');
+const weaponSelectButton=makeActionButton('BAG','auto','auto','#b18a42dd');weaponSelectButton.id='ska-weapon-select';weaponSelectButton.style.left='98px';weaponSelectButton.style.right='auto';weaponSelectButton.style.transform='none';weaponSelectButton.style.top='92px';weaponSelectButton.style.bottom='auto';weaponSelectButton.innerHTML='<span style="font-size:28px;line-height:1">▣</span>';weaponSelectButton.title='LOADOUT';weaponSelectButton.setAttribute('aria-label','Open loadout');
 wireButtonAction(weaponSelectButton,()=>{inventoryPanel.style.display=inventoryPanel.style.display==='block'?'none':'block';refreshInventory();});
 
 jumpButton.id='ska-jump';
