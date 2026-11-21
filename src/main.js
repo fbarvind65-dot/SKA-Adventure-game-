@@ -728,9 +728,11 @@ function animate(){
   const crouched=playerStance==='crouch', prone=playerStance==='prone';
   for(const e of proceduralRigBones){const b=e.bone,r=e.base,wave=Math.sin(walkTime*pace+(e.side<0?Math.PI:0));
    let pose=0,stride=0;
-   if(crouched){if(e.role==='hips')pose=.32;if(e.role==='leg')pose=.72;if(e.role==='knee')pose=-1.05;if(e.role==='spine')pose=-.18;if(e.role==='arm'||e.role==='forearm')pose=-.22;}
-   else if(prone){if(e.role==='hips')pose=.12;if(e.role==='leg')pose=1.12;if(e.role==='knee')pose=-.75;if(e.role==='spine')pose=-1.12;if(e.role==='head')pose=.48;if(e.role==='arm')pose=-.35;if(e.role==='forearm')pose=-.2;}
-   if(moving&&!isDriving){if(e.role==='leg')stride=wave*e.amp*(prone?.16:crouched?.58:1);else if(e.role==='knee')stride=Math.max(0,-wave)*e.amp*(prone?.12:crouched?.65:1);else if(e.role==='arm')stride=-wave*e.amp*(prone?.08:crouched?.42:1);else if(e.role==='forearm')stride=wave*e.amp*(prone?.05:crouched?.25:1);else if(e.role==='hips')stride=Math.abs(wave)*.025;}
+   // Keep the imported character's arms in their natural position.
+   // The old procedural arm rotations made the character walk with arms spread.
+   if(crouched){if(e.role==='hips')pose=.32;if(e.role==='leg')pose=.72;if(e.role==='knee')pose=-1.05;if(e.role==='spine')pose=-.18;}
+   else if(prone){if(e.role==='hips')pose=.12;if(e.role==='leg')pose=1.12;if(e.role==='knee')pose=-.75;if(e.role==='spine')pose=-1.12;if(e.role==='head')pose=.48;}
+   if(moving&&!isDriving){if(e.role==='leg')stride=wave*e.amp*(prone?.16:crouched?.58:1);else if(e.role==='knee')stride=Math.max(0,-wave)*e.amp*(prone?.12:crouched?.65:1);else if(e.role==='hips')stride=Math.abs(wave)*.025;}
    b.rotation.x=THREE.MathUtils.damp(b.rotation.x,r.x+pose+stride,moving?14:9,dt);
   }
  }
