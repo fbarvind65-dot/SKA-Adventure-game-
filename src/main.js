@@ -1131,11 +1131,14 @@ if(pickupLabel.style.display==='block'){const p=roadPickup.position.clone();p.y+
  if(proceduralRigBones.length&&playerStance==='crouch'&&!sitStandBusy){
   for(const e of proceduralRigBones){
    let offset=0;
-   if(e.role==='hips')offset=.10;
-   else if(e.role==='leg')offset=.42;
-   else if(e.role==='knee')offset=-.58;
-   else if(e.role==='spine')offset=-.08;
-   else if(e.role==='arm')offset=-.08;
+   // A real squat needs clear hip lowering and a deep knee bend, not
+   // a small walking lean that leaves the character visually upright.
+   if(e.role==='hips')offset=.34;
+   else if(e.role==='leg')offset=.82;
+   else if(e.role==='knee')offset=-1.05;
+   else if(e.role==='spine')offset=.06;
+   else if(e.role==='arm')offset=.16;
+   else if(e.role==='forearm')offset=-.08;
    e.bone.rotation.x+=offset;e.appliedOffset+=offset;
   }
  }
