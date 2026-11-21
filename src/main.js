@@ -396,10 +396,10 @@ characterLoader.load(playerModelUrl, (gltf) => {
   sitAction=characterMixer.clipAction(sitClip);standAction=characterMixer.clipAction(standClip);
   for(const action of [sitAction,standAction]){action.setLoop(THREE.LoopOnce,1);action.clampWhenFinished=true;}
   characterMixer.addEventListener('finished',(event)=>{
-   if(event.action===sitAction){isSitting=true;playerStance='sitting';sitStandBusy=false;if(sitStandButton)sitStandButton.textContent='STAND';}
-   if(event.action===standAction){isSitting=false;playerStance='stand';sitStandBusy=false;if(sitStandButton)sitStandButton.textContent='SIT';setCharacterAnimation('idle');}
+   if(event.action===sitAction){isSitting=true;playerStance='sitting';sitStandBusy=false;if(sitStandButton){sitStandButton.textContent='STAND';sitStandButton.setAttribute('aria-label','Stand up');sitStandButton.title='Stand up';sitStandButton.style.background='#245b48dd';}}
+   if(event.action===standAction){isSitting=false;playerStance='stand';sitStandBusy=false;if(sitStandButton){sitStandButton.textContent='SIT';sitStandButton.setAttribute('aria-label','Sit down');sitStandButton.title='Sit down';sitStandButton.style.background='#17252cdd';}setCharacterAnimation('idle');}
   });
-  if(sitStandButton){sitStandButton.disabled=false;sitStandButton.textContent='SIT';}
+  if(sitStandButton){sitStandButton.disabled=false;sitStandButton.textContent='SIT';sitStandButton.setAttribute('aria-label','Sit down');sitStandButton.title='Sit down';}
  },undefined,(error)=>{console.warn('Sit/Stand GLB failed to load:',error);if(sitStandButton)sitStandButton.disabled=true;});
  // Use the uploaded model instead of the procedural placeholder.
  torso.visible = false;
@@ -485,7 +485,6 @@ hudStyle.textContent=`
  #ska-jump{right:4vw!important;bottom:6vh!important;top:auto!important;width:clamp(78px,15vh,100px)!important;height:clamp(78px,15vh,100px)!important}
  #ska-crouch{right:4vw!important;bottom:calc(6vh + 112px)!important;top:auto!important}
  #ska-prone{right:4vw!important;bottom:calc(6vh + 192px)!important;top:auto!important}
- #ska-sit-stand{right:4vw!important;bottom:calc(6vh + 280px)!important;top:auto!important}
  #ska-map{right:calc(4vw + 92px)!important;bottom:calc(6vh + 140px)!important;top:auto!important}
  #ska-camera-reset{right:calc(4vw + 92px)!important;bottom:calc(6vh + 228px)!important;top:auto!important}
  #ska-fullscreen{right:max(14px,env(safe-area-inset-right))!important;top:max(12px,env(safe-area-inset-top))!important}
@@ -499,7 +498,6 @@ hudStyle.textContent=`
  #ska-jump{right:5vw!important;bottom:calc(8vh + 78px)!important;top:auto!important}
  #ska-crouch{right:5vw!important;bottom:calc(8vh + 156px)!important;top:auto!important}
  #ska-prone{right:5vw!important;bottom:calc(8vh + 234px)!important;top:auto!important}
- #ska-sit-stand{right:5vw!important;bottom:calc(8vh + 312px)!important;top:auto!important}
  #ska-map{right:calc(5vw + 72px)!important;bottom:calc(8vh + 130px)!important;top:auto!important}
  #ska-camera-reset{right:calc(5vw + 72px)!important;bottom:calc(8vh + 208px)!important;top:auto!important}
  #ska-map-panel{right:5vw!important;top:74px!important}
@@ -578,14 +576,15 @@ const proneButton=makeActionButton('PRONE','max(22px,env(safe-area-inset-right))
 proneButton.id='ska-prone';
 proneButton.innerHTML='<svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="10" r="2"/><path d="M8 12h8l3 3M10 12l-2 5M14 12l2 5M18 15l3 2"/></svg>';
 proneButton.style.bottom='calc(max(7vh,env(safe-area-inset-bottom)) + (clamp(56px,10vh,68px) + 14px)*2)';
-crouchButton.addEventListener('click',()=>setPlayerStance('crouch'));
-proneButton.addEventListener('click',()=>setPlayerStance('prone'));
-sitStandButton=makeActionButton('SIT','max(22px,env(safe-area-inset-right))','auto','#245b48dd');
-sitStandButton.id='ska-sit-stand';
-sitStandButton.textContent='SIT';
-sitStandButton.style.bottom='calc(max(7vh,env(safe-area-inset-bottom)) + (clamp(56px,10vh,68px) + 14px)*3)';
-sitStandButton.style.borderRadius='18px';sitStandButton.style.width='74px';sitStandButton.style.height='54px';sitStandButton.style.font='900 14px Arial,sans-serif';sitStandButton.disabled=true;
-sitStandButton.addEventListener('click',()=>{
+crouchButton.textContent='SIT';
+crouchButton.style.font='900 13px Arial,sans-serif';
+crouchButton.style.borderRadius='18px';
+crouchButton.style.background='#17252cdd';
+crouchButton.setAttribute('aria-label','Sit down');crouchButton.title='Sit down';
+sitStandButton=crouchButton;
+sitStandButton.disabled=true;
+crouchButton.addEventListener('click',()=>{
+ if(!sitAction||!standAction){setPlayerStance('crouch');return;}
  if(sitStandBusy||!sitAction||!standAction)return;
  sitStandBusy=true;
  const next=isSitting?standAction:sitAction;
