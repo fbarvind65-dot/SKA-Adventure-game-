@@ -320,15 +320,19 @@ characterLoader.load(playerModelUrl, (gltf) => {
  character.traverse((object) => {
   if (object.isMesh) { object.castShadow=true; object.receiveShadow=true; }
   if(object.isBone){
-   const n=object.name.toLowerCase().replace(/[^a-z]/g,'');
-   let role='',side=/right/.test(n)?-1:1,amp=.55;
-   if(/hips|pelvis/.test(n)){role='hips';amp=.18;}
-   else if(/spine|chest/.test(n)){role='spine';amp=.16;}
+   const n=object.name.toLowerCase().replace(/[^a-z0-9]/g,'');
+   let role='',side=1,amp=.55;
+   if(/pelvis/.test(n)){role='hips';amp=.18;}
+   else if(/spine/.test(n)){role='spine';amp=.16;}
    else if(/head|neck/.test(n)){role='head';amp=.08;}
-   else if(/thigh|upleg/.test(n)){role='leg';amp=.62;}
-   else if(/calf|lowerleg|shin/.test(n)){role='knee';amp=.48;}
-   else if(/upperarm|arm/.test(n)&&!/forearm|lowerarm/.test(n)){role='arm';amp=.4;}
-   else if(/forearm|lowerarm/.test(n)){role='forearm';amp=.3;}
+   else if(/bip01lthigh|lthigh|leftthigh/.test(n)){role='leg';side=1;amp=.62;}
+   else if(/bip01rthigh|rthigh|rightthigh/.test(n)){role='leg';side=-1;amp=.62;}
+   else if(/bip01lcalf|lcalf|leftcalf/.test(n)){role='knee';side=1;amp=.48;}
+   else if(/bip01rcalf|rcalf|rightcalf/.test(n)){role='knee';side=-1;amp=.48;}
+   else if(/bip01lupperarm|lupperarm|leftupperarm/.test(n)){role='arm';side=1;amp=.4;}
+   else if(/bip01rupperarm|rupperarm|rightupperarm/.test(n)){role='arm';side=-1;amp=.4;}
+   else if(/bip01lforearm|lforearm|leftforearm/.test(n)){role='forearm';side=1;amp=.3;}
+   else if(/bip01rforearm|rforearm|rightforearm/.test(n)){role='forearm';side=-1;amp=.3;}
    if(role)proceduralRigBones.push({bone:object,base:object.rotation.clone(),role,side,amp});
   }
  });
