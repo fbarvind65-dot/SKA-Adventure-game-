@@ -321,13 +321,14 @@ characterLoader.load(playerModelUrl, (gltf) => {
   if (object.isMesh) { object.castShadow=true; object.receiveShadow=true; }
   if(object.isBone){
    const n=object.name.toLowerCase().replace(/[^a-z]/g,'');
-   let role='',side=1,amp=.6;
-   if(/left.*(upleg|thigh)/.test(n)){role='leg';side=1;}
-   else if(/right.*(upleg|thigh)/.test(n)){role='leg';side=-1;}
-   else if(/left.*(upperarm|arm)/.test(n)){role='arm';side=-1;amp=.4;}
-   else if(/right.*(upperarm|arm)/.test(n)){role='arm';side=1;amp=.4;}
-   else if(/left.*(lowerleg|calf)/.test(n)){role='knee';side=1;amp=.45;}
-   else if(/right.*(lowerleg|calf)/.test(n)){role='knee';side=-1;amp=.45;}
+   let role='',side=/right/.test(n)?-1:1,amp=.55;
+   if(/hips|pelvis/.test(n)){role='hips';amp=.18;}
+   else if(/spine|chest/.test(n)){role='spine';amp=.16;}
+   else if(/head|neck/.test(n)){role='head';amp=.08;}
+   else if(/thigh|upleg/.test(n)){role='leg';amp=.62;}
+   else if(/calf|lowerleg|shin/.test(n)){role='knee';amp=.48;}
+   else if(/upperarm|arm/.test(n)&&!/forearm|lowerarm/.test(n)){role='arm';amp=.4;}
+   else if(/forearm|lowerarm/.test(n)){role='forearm';amp=.3;}
    if(role)proceduralRigBones.push({bone:object,base:object.rotation.clone(),role,side,amp});
   }
  });
@@ -700,14 +701,14 @@ function animate(){
   characterMixer.update(dt);
  }
  if(proceduralRigBones.length){
-  const pace=(runHeld||keys.shift)?1.5:1;
-  const stance=playerStance==='prone'?.08:playerStance==='crouch'?.5:1;
-  for(const e of proceduralRigBones){const b=e.bone,r=e.base;
-   if(moving&&!isDriving){const wave=Math.sin(walkTime*pace+(e.side<0?Math.PI:0));
-    if(e.role==='leg')b.rotation.x=r.x+wave*e.amp*stance;
-    else if(e.role==='knee')b.rotation.x=r.x+Math.max(0,-wave)*e.amp*stance;
-    else b.rotation.x=r.x-wave*e.amp*stance;
-   }else b.rotation.x=THREE.MathUtils.damp(b.rotation.x,r.x,9,dt);
+  const sprinting=runHeld||keys.shift, pace=sprinting?1.75:1.15;
+  const crouched=playerStance==='crouch', prone=playerStance==='prone';
+  for(const e of proceduralRigBones){const b=e.bone,r=e.base,wave=Math.sin(walkTime*pace+(e.side<0?Math.PI:0));
+   let pose=0,stride=0;
+   if(crouched){if(e.role==='hips')pose=.32;if(e.role==='leg')pose=.72;if(e.role==='knee')pose=-1.05;if(e.role==='spine')pose=-.18;if(e.role==='arm'||e.role==='forearm')pose=-.22;}
+   else if(prone){if(e.role==='hips')pose=.12;if(e.role==='leg')pose=1.12;if(e.role==='knee')pose=-.75;if(e.role==='spine')pose=-1.12;if(e.role==='head')pose=.48;if(e.role==='arm')pose=-.35;if(e.role==='forearm')pose=-.2;}
+   if(moving&&!isDriving){if(e.role==='leg')stride=wave*e.amp*(prone?.16:crouched?.58:1);else if(e.role==='knee')stride=Math.max(0,-wave)*e.amp*(prone?.12:crouched?.65:1);else if(e.role==='arm')stride=-wave*e.amp*(prone?.08:crouched?.42:1);else if(e.role==='forearm')stride=wave*e.amp*(prone?.05:crouched?.25:1);else if(e.role==='hips')stride=Math.abs(wave)*.025;}
+   b.rotation.x=THREE.MathUtils.damp(b.rotation.x,r.x+pose+stride,moving?14:9,dt);
   }
  }
  if(moving){
