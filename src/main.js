@@ -573,7 +573,7 @@ mapButton.addEventListener('click',()=>{
  mapOpen=!mapOpen; mapPanel.style.display=mapOpen?'block':'none';
 });
 resetButton.addEventListener('click',()=>{
- cameraYaw=0;cameraPitch=.28;cameraDistance=11.5;firstPerson=false;
+ cameraYaw=0;cameraPitch=.28;cameraDistance=3.5;firstPerson=false;
  viewButton.setAttribute('aria-label','First-person view');
  toast('Camera reset');
 });
@@ -680,7 +680,7 @@ lobbyScreen.querySelector('#ska-lobby-play').addEventListener('click',async()=>{
  vehicles[0].position.copy(lobbyVehicleOriginal);
  player.position.set(0,0,18);
  hudRoot.style.display='block'; hud.style.display='block';
- cameraYaw=0;cameraPitch=.28;cameraDistance=11.5;
+ cameraYaw=0;cameraPitch=.28;cameraDistance=3.5;
  updateHudLayout();
 });
 
@@ -690,7 +690,7 @@ const lookTarget=new THREE.Vector3();
 let walkTime=0;
 
 // 360-degree camera: drag anywhere on the world view to orbit around the player.
-let cameraYaw=0, cameraPitch=0.16, cameraDistance=11.5;
+let cameraYaw=0, cameraPitch=0.16, cameraDistance=3.5;
 let cameraPointer=null, lastPointerX=0, lastPointerY=0;
 renderer.domElement.addEventListener('pointerdown',e=>{
  cameraPointer=e.pointerId; lastPointerX=e.clientX; lastPointerY=e.clientY;
