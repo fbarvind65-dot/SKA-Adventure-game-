@@ -1132,6 +1132,8 @@ if(pickupLabel.style.display==='block'){const p=roadPickup.position.clone();p.y+
   torso.position.y=THREE.MathUtils.damp(torso.position.y,0,10,dt);
   torso.rotation.x=THREE.MathUtils.damp(torso.rotation.x,0,8,dt);
  }
+ // Fallback short fist swing while the uploaded action is unavailable.
+ if(punchTimer>0){const swing=Math.sin(Math.min(1,punchTimer/.34)*Math.PI);rightArm.rotation.x=-1.15*swing;rightArm.rotation.z=-.3*swing;}
  const horizontalDistance=Math.cos(cameraPitch)*cameraDistance;
  desiredCamera.set(
   player.position.x+Math.sin(cameraYaw)*horizontalDistance,
