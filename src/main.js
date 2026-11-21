@@ -999,6 +999,17 @@ function animate(){
  const joystickStrength=THREE.MathUtils.clamp(Math.hypot(x,y),0,1);
  const moving=joystickStrength>.035;
 
+// Roadside pickup collection and screen-space prompt.
+if(roadPickup.visible){
+ const pickupDistance=Math.hypot(player.position.x-roadPickup.position.x,player.position.z-roadPickup.position.z);
+ pickupLabel.style.display=gameStarted&&pickupDistance<4.5?'block':'none';
+ if(gameStarted&&pickupDistance<1.7){
+  const gunItem={id:'road-gun',name:'Game Gun',icon:'🔫',type:'gun'};
+  if(!inventoryItems.some(item=>item.id===gunItem.id))inventoryItems.push(gunItem);
+  equippedItem=gunItem;roadPickup.visible=false;pickupLabel.style.display='none';refreshInventory();toast('Gun picked up · bag updated');
+ }
+}else pickupLabel.style.display='none';
+if(pickupLabel.style.display==='block'){const p=roadPickup.position.clone();p.y+=1.05;p.project(camera);pickupLabel.style.left=((p.x*.5+.5)*innerWidth)+'px';pickupLabel.style.top=((-p.y*.5+.5)*innerHeight)+'px';}
 // Detect nearby parked cars so GET IN appears only when useful.
  nearbyVehicle=null;
  if(!isDriving){
