@@ -951,8 +951,8 @@ const map2Positions=map2GroundGeometry.attributes.position;
 const map2Colors=[];
 for(let i=0;i<map2Positions.count;i++){
  const x=map2Positions.getX(i),z=-map2Positions.getY(i);
- const ridge=Math.max(0,1-Math.hypot(x,z)/280);
- const elevation=Math.sin(x*.018)*2.2+Math.cos(z*.021)*2.4+ridge*ridge*18;
+ const ridge=Math.max(0,1-Math.abs(Math.hypot(x,z)-175)/90);
+ const elevation=Math.sin(x*.018)*1.2+Math.cos(z*.021)*1.2+ridge*12-2.4;
  map2Positions.setZ(i,elevation);
  const shade=THREE.MathUtils.clamp(.72+elevation*.012+(Math.sin(x*.13+z*.08)*.045),.55,1.12);
  map2Colors.push(.20*shade,.31*shade,.16*shade);
