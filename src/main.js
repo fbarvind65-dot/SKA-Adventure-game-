@@ -943,8 +943,12 @@ americanRoadLoader.load(americanRoadUrl,(gltf)=>{
  roadModel.updateMatrixWorld(true);
  bounds=new THREE.Box3().setFromObject(roadModel);
  const dimensions=bounds.getSize(new THREE.Vector3());
- const roadLength=Math.max(dimensions.x,dimensions.z);
- if(roadLength>0)roadModel.scale.setScalar(520/roadLength);
+ // Match the former Map 1 road footprint: 14 world units wide and 520 long.
+ // Fit the GLB to those exact road dimensions instead of scaling length alone.
+ if(dimensions.x>0&&dimensions.z>0){
+  roadModel.scale.x*=14/dimensions.x;
+  roadModel.scale.z*=520/dimensions.z;
+ }
  roadModel.updateMatrixWorld(true);
  bounds=new THREE.Box3().setFromObject(roadModel);
  const roadCenter=bounds.getCenter(new THREE.Vector3());
