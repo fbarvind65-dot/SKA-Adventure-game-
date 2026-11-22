@@ -983,7 +983,7 @@ for(let i=0;i<map2PathSamples.length;i++){
  for(const side of [-1,1]){
   const px=point.x+sideX*map2PathHalfWidth*side;
   const pz=point.z+sideZ*map2PathHalfWidth*side;
-  map2PathVertices.push(px,map2HeightAt(px,pz)+.34,pz);
+  map2PathVertices.push(px,map2HeightAt(px,pz)+.035,pz);
   map2PathUvs.push(i/(map2PathSamples.length-1)*18,(side+1)*.5);
  }
  if(i<map2PathSamples.length-1){
@@ -1010,7 +1010,7 @@ function map2SurfaceHeightAt(x,z){
   const distSq=(x-px)*(x-px)+(z-pz)*(z-pz);
   if(distSq<nearestSq)nearestSq=distSq;
  }
- return map2HeightAt(x,z)+(nearestSq<=(map2PathHalfWidth-.12)**2?0.36:0.035);
+ return map2HeightAt(x,z)+(nearestSq<=(map2PathHalfWidth-.12)**2?0.035:0.035);
 }
 const map2Bark=new THREE.MeshStandardMaterial({color:0x493426,roughness:1});
 const map2LeafMaterials=[0x263d25,0x304b2d,0x3b552f,0x4a6238,0x35472a].map(color=>new THREE.MeshStandardMaterial({color,roughness:.96}));
