@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import playerModelUrl from './Business_Female_02.glb?url';
 import idleAnimationUrl from './f_idle_neutral_01.glb?url';
@@ -1038,6 +1039,10 @@ for(let i=0;i<118;i++){
 }
 const map2RockLoader=new GLTFLoader();
 map2RockLoader.setMeshoptDecoder(MeshoptDecoder);
+// Decode Draco-compressed geometry used by many optimized Sketchfab GLBs.
+const map2RockDracoLoader=new DRACOLoader();
+map2RockDracoLoader.setDecoderPath('https://www.gstatic.com/draco/v1/decoders/');
+map2RockLoader.setDRACOLoader(map2RockDracoLoader);
 map2RockLoader.load(rockModelUrl,gltf=>{
  const rockSource=gltf.scene;
  rockSource.traverse(object=>{if(object.isMesh){object.castShadow=true;object.receiveShadow=true;}});
