@@ -10,6 +10,7 @@ import sitStandBundleUrl from './Business_Female_02-rigged-animated.glb?url';
 import crouchWalkAnimationUrl from './Walk_-_crouched_forwards.glb?url';
 import punchAnimationUrl from './Punch_-_cross_right_2.glb?url';
 import rockModelUrl from '../assets/rocks/rock_1_montebu (1).glb?url';
+import terrainModelUrl from '../assets/update_dirt_road_through_forest (2).glb?url';
 
 const app = document.querySelector('#app');
 document.body.style.cssText = 'margin:0;overflow:hidden;background:#9bb8c7;font-family:Arial,sans-serif;overscroll-behavior:none;touch-action:none';
@@ -938,6 +939,41 @@ const map2World=new THREE.Group();
 map2World.name='SKA_MAP_02_WILDLANDS';
 map2World.visible=false;
 scene.add(map2World);
+
+// Load the uploaded forest-road GLB into Map 2. Normalize its footprint and center it
+// so different source-model origins do not place the environment far off the map.
+const map2TerrainLoader=new GLTFLoader();
+map2TerrainLoader.setMeshoptDecoder(MeshoptDecoder);
+const map2TerrainDracoLoader=new DRACOLoader();
+map2TerrainDracoLoader.setDecoderPath('https://www.gstatic.com/draco/v1/decoders/');
+map2TerrainLoader.setDRACOLoader(map2TerrainDracoLoader);
+map2TerrainLoader.load(terrainModelUrl,gltf=>{
+ const terrainScene=gltf.scene;
+ terrainScene.updateMatrixWorld(true);
+ terrainScene.traverse(object=>{
+  if(object.isMesh){
+   object.visible=true;
+   object.castShadow=true;
+   object.receiveShadow=true;
+   object.frustumCulled=false;
+  }
+ });
+ const sourceBounds=new THREE.Box3().setFromObject(terrainScene);
+ const sourceSize=sourceBounds.getSize(new THREE.Vector3());
+ const horizontalSize=Math.max(sourceSize.x,sourceSize.z,1);
+ terrainScene.scale.setScalar(460/horizontalSize);
+ terrainScene.updateMatrixWorld(true);
+ const terrainBounds=new THREE.Box3().setFromObject(terrainScene);
+ terrainScene.position.x-=(terrainBounds.min.x+terrainBounds.max.x)*.5;
+ terrainScene.position.z-=(terrainBounds.min.z+terrainBounds.max.z)*.5;
+ terrainScene.position.y+=map2HeightAt(0,0)-terrainBounds.min.y;
+ map2World.add(terrainScene);
+ console.info('Map 2 forest-road GLB loaded:',sourceSize.toArray());
+ toast('Forest terrain loaded in Map 2');
+},undefined,error=>{
+ console.error('Map 2 forest-road GLB failed to load:',error);
+ toast('Forest terrain failed to load: '+(error?.message||'GLB error'));
+});
 // One shared height function drives the terrain mesh, trees, rocks, path and player.
 function map2HeightAt(x,z){
  const ridge=Math.max(0,1-Math.abs(Math.hypot(x,z)-175)/90);
