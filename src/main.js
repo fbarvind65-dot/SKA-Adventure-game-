@@ -960,66 +960,7 @@ map2World.position.set(MAP2_OFFSET_X,0,0);
 map2World.visible=true;
 scene.add(map2World);
 
-// One continuous, broad river runs across the entire joined map and beyond its edges.
-// Natural river materials: muted water tones, earthy banks, and low-contrast moving reflections.
-const riverWaterMaterial=new THREE.MeshStandardMaterial({
- color:0xffffff,roughness:.24,metalness:.04,
- transparent:false,side:THREE.DoubleSide,depthWrite:true,vertexColors:true
-});
-const riverBankMaterial=new THREE.MeshStandardMaterial({color:0x75664e,roughness:1,side:THREE.DoubleSide});
-riverWaterMaterial.onBeforeCompile=(shader)=>{
- shader.uniforms.uRiverTime={value:0};
- shader.vertexShader=shader.vertexShader.replace(
-  '#include <common>','#include <common>\nuniform float uRiverTime;\nvarying vec2 vRiverUv;'
- ).replace(
-  '#include <uv_vertex>','#include <uv_vertex>\nvRiverUv=uv;'
- );
- shader.fragmentShader=shader.fragmentShader.replace(
-  '#include <common>','#include <common>\nuniform float uRiverTime;\nvarying vec2 vRiverUv;'
- ).replace(
-  '#include <color_fragment>',
-  '#include <color_fragment>\nfloat riverSheen=sin(vRiverUv.x*24.0+vRiverUv.y*7.0-uRiverTime*0.55)*0.018;\ndiffuseColor.rgb*=1.0+riverSheen;'
- );
- riverWaterMaterial.userData.riverShader=shader;
-};
-riverWaterMaterial.customProgramCacheKey=()=> 'ska-natural-river-flow-v2';
-function riverCenter(z){
- return 420+Math.sin(z*.0024)*24+Math.sin(z*.006)*7+Math.sin(z*.012)*2.5;
-}
-function makeRiverRibbon(width,y,material,name){
- const vertices=[],indices=[],uvs=[],colors=[];
- const longitudinal=700,across=12;
- for(let i=0;i<=longitudinal;i++){
-  const z=-1250+i*(2500/longitudinal);
-  const centerX=riverCenter(z);
-  const widthScale=.78+.15*Math.sin(z*.0041)+.07*Math.sin(z*.0103);
-  for(let j=0;j<=across;j++){
-   const t=j/across*2-1;
-   const edgeWave=1+.035*Math.sin(z*.018+j*1.7)+.018*Math.sin(z*.041-j*.8);
-   const x=centerX+t*(width*.5*widthScale*edgeWave);
-   vertices.push(x,y,z);
-   uvs.push(j/across,i/longitudinal);
-   // Darker central channel and naturally lighter shallow edges.
-   const shallow=Math.pow(Math.abs(t),2.2);
-   colors.push(.38+.24*shallow,.62+.18*shallow,.66+.12*shallow);
-   if(i<longitudinal&&j<across){
-    const a=i*(across+1)+j,b=a+across+1;
-    indices.push(a,b,a+1,a+1,b,b+1);
-   }
-  }
- }
- const geometry=new THREE.BufferGeometry();
- geometry.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));
- geometry.setAttribute('uv',new THREE.Float32BufferAttribute(uvs,2));
- geometry.setAttribute('color',new THREE.Float32BufferAttribute(colors,3));
- geometry.setIndex(indices);geometry.computeVertexNormals();
- const mesh=new THREE.Mesh(geometry,material);
- mesh.name=name;mesh.receiveShadow=false;mesh.renderOrder=3;scene.add(mesh);
- return mesh;
-}
-// Irregular muddy banks frame a wider, shallow-to-deep river channel.
-makeRiverRibbon(67,-1.30,riverBankMaterial,'SKA_LONG_RIVER_BANKS');
-makeRiverRibbon(48,-1.18,riverWaterMaterial,'SKA_LONG_RIVER_WATER');
+// River visuals and river-specific animation removed for now.
 // Load the uploaded American Road GLB; normalize its bounds so it is not buried by its source origin.
 const americanRoadLoader=new GLTFLoader();
 americanRoadLoader.setMeshoptDecoder(MeshoptDecoder);
@@ -1057,15 +998,10 @@ function map2HeightAt(x,z){
  const rolling=Math.sin(x*.014+Math.sin(z*.009)*1.8)*4.2+Math.cos(z*.017+Math.sin(x*.012)*1.5)*3.6;
  const brokenRock=Math.sin(x*.061+z*.027)*1.15+Math.cos(z*.073-x*.019)*.9+Math.sin((x-z)*.11)*.42;
  const naturalHeight=rolling+brokenRock+ridge*19+hillA+hillB-5.5;
- // Carve a long natural river channel into Map 2's terrain, aligned to the river mesh.
- const worldX=x+MAP2_OFFSET_X;
- const riverCenterX=420+Math.sin(z*.0024)*24+Math.sin(z*.006)*7;
- const riverDistance=Math.abs(worldX-riverCenterX);
- const riverCut=1-THREE.MathUtils.smoothstep(riverDistance,18,48);
- const terrainHeight=THREE.MathUtils.lerp(naturalHeight,-1.35,riverCut);
+ // Natural terrain without a carved river channel.
  // Smoothly meet Map 1's flat ground at Map 2's western boundary (world x=250).
  const westEdgeBlend=THREE.MathUtils.smoothstep(x,-400,-300);
- return THREE.MathUtils.lerp(-.08,terrainHeight,westEdgeBlend);
+ return THREE.MathUtils.lerp(-.08,naturalHeight,westEdgeBlend);
 }
 const map2GroundGeometry=new THREE.PlaneGeometry(800,800,360,360);
 const map2Positions=map2GroundGeometry.attributes.position;
@@ -1365,9 +1301,6 @@ renderer.domElement.addEventListener('wheel',e=>{
 function animate(){
  requestAnimationFrame(animate);
  const dt=Math.min(clock.getDelta(),.04);
- if(riverWaterMaterial.userData.riverShader){
-  riverWaterMaterial.userData.riverShader.uniforms.uRiverTime.value=clock.elapsedTime;
- }
  let x=moveX+(keys.d||keys.arrowright?1:0)-(keys.a||keys.arrowleft?1:0);
  let y=moveY+(keys.s||keys.arrowdown?1:0)-(keys.w||keys.arrowup?1:0);
  const length=Math.hypot(x,y); if(length>1){x/=length;y/=length}
@@ -1565,12 +1498,6 @@ if(pickupLabel.style.display==='block'){const p=roadPickup.position.clone();p.y+
     if(worldX>=250){
      const localX=worldX-MAP2_OFFSET_X;
      floorHeight=map2SurfaceHeightAt(localX,player.position.z,player.position.y);
-     // Keep the player's feet above the lowered river bed: the water ribbon
-     // is at -0.95, while the carved terrain channel reaches -1.35.
-     const riverCenterX=420+Math.sin(player.position.z*.0024)*24+Math.sin(player.position.z*.006)*7;
-     const riverDistance=Math.abs(worldX-riverCenterX);
-     const riverFloorBlend=1-THREE.MathUtils.smoothstep(riverDistance,12,30);
-     floorHeight=THREE.MathUtils.lerp(floorHeight,-.78,riverFloorBlend);
     }
    }
    if(!jumpActive)player.position.y=floorHeight;
