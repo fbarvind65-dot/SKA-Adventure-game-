@@ -1525,7 +1525,16 @@ if(pickupLabel.style.display==='block'){const p=roadPickup.position.clone();p.y+
     const blend=THREE.MathUtils.smoothstep(worldX,145,250);
     const roadTerrainY=map2HeightAt(worldX-MAP2_OFFSET_X,0);
     floorHeight=THREE.MathUtils.lerp(.02,roadTerrainY+.12,blend);
-    if(worldX>=250)floorHeight=map2SurfaceHeightAt(worldX-MAP2_OFFSET_X,player.position.z,player.position.y);
+    if(worldX>=250){
+     const localX=worldX-MAP2_OFFSET_X;
+     floorHeight=map2SurfaceHeightAt(localX,player.position.z,player.position.y);
+     // Keep the player's feet above the lowered river bed: the water ribbon
+     // is at -0.95, while the carved terrain channel reaches -1.35.
+     const riverCenterX=420+Math.sin(player.position.z*.0024)*24+Math.sin(player.position.z*.006)*7;
+     const riverDistance=Math.abs(worldX-riverCenterX);
+     const riverFloorBlend=1-THREE.MathUtils.smoothstep(riverDistance,12,30);
+     floorHeight=THREE.MathUtils.lerp(floorHeight,-.78,riverFloorBlend);
+    }
    }
    if(!jumpActive)player.position.y=floorHeight;
    else if(player.position.y<floorHeight){player.position.y=floorHeight;jumpVelocity=0;jumpActive=false;}
