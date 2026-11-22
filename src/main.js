@@ -1032,7 +1032,10 @@ function map2HeightAt(x,z){
  const riverCenterX=420+Math.sin(z*.0024)*24+Math.sin(z*.006)*7;
  const riverDistance=Math.abs(worldX-riverCenterX);
  const riverCut=1-THREE.MathUtils.smoothstep(riverDistance,18,48);
- return THREE.MathUtils.lerp(naturalHeight,-1.35,riverCut);
+ const terrainHeight=THREE.MathUtils.lerp(naturalHeight,-1.35,riverCut);
+ // Smoothly meet Map 1's flat ground at Map 2's western boundary (world x=250).
+ const westEdgeBlend=THREE.MathUtils.smoothstep(x,-400,-300);
+ return THREE.MathUtils.lerp(-.08,terrainHeight,westEdgeBlend);
 }
 const map2GroundGeometry=new THREE.PlaneGeometry(800,800,360,360);
 const map2Positions=map2GroundGeometry.attributes.position;
