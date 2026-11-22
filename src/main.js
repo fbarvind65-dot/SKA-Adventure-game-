@@ -11,6 +11,10 @@ import crouchWalkAnimationUrl from './Walk_-_crouched_forwards.glb?url';
 import punchAnimationUrl from './Punch_-_cross_right_2.glb?url';
 import rockModelUrl from '../assets/rocks/rock_1_montebu (1).glb?url';
 import rockySurfaceUrl from '../assets/rocky_surface_1 (1).glb?url';
+import americanRoadUrl from '../assets/american_road (1).glb?url';
+import gravelRoadUrl from '../assets/gravel_road_2 (1).glb?url';
+import bridgeModelUrl from '../assets/beam-highway-bridge.glb.txt?url';
+import riverModelUrl from '../assets/straight-river-segment.glb?url';
 
 const app = document.querySelector('#app');
 document.body.style.cssText = 'margin:0;overflow:hidden;background:#9bb8c7;font-family:Arial,sans-serif;overscroll-behavior:none;touch-action:none';
@@ -965,7 +969,9 @@ function map2HeightAt(x,z){
  const hillB=27*Math.exp(-((x+105)**2+(z-95)**2)/4600);
  const rolling=Math.sin(x*.014+Math.sin(z*.009)*1.8)*4.2+Math.cos(z*.017+Math.sin(x*.012)*1.5)*3.6;
  const brokenRock=Math.sin(x*.061+z*.027)*1.15+Math.cos(z*.073-x*.019)*.9+Math.sin((x-z)*.11)*.42;
- return rolling+brokenRock+ridge*19+hillA+hillB-5.5;
+ // Cut a shallow river channel across the forest road; bridge sits above it.
+ const riverCut=Math.abs(z+45)<11&&Math.abs(x)<92?Math.max(0,1-Math.abs(z+45)/11)*10:0;
+ return rolling+brokenRock+ridge*19+hillA+hillB-5.5-riverCut;
 }
 const map2GroundGeometry=new THREE.PlaneGeometry(800,800,360,360);
 const map2Positions=map2GroundGeometry.attributes.position;
@@ -1051,9 +1057,67 @@ map2PathGeometry.setAttribute('uv',new THREE.Float32BufferAttribute(map2PathUvs,
 map2PathGeometry.setIndex(map2PathIndices);
 map2PathGeometry.computeVertexNormals();
 const map2Trail=new THREE.Mesh(map2PathGeometry,new THREE.MeshStandardMaterial({color:0x80664a,roughness:1,side:THREE.DoubleSide}));
-map2Trail.receiveShadow=true;map2Trail.visible=false;map2World.add(map2Trail); // Hide old generated path.
+map2Trail.receiveShadow=true;map2Trail.visible=false;map2World.add(map2Trail); // Replaced by the uploaded road assets.
+
+// Real Map 2 road, bridge and river assets. Models are dimension-fitted at runtime
+// so their original authoring scale does not make them disappear or sit underground.
+const map2RoadAssetLoader=new GLTFLoader();
+map2RoadAssetLoader.setMeshoptDecoder(MeshoptDecoder);
+map2RoadAssetLoader.setDRACOLoader(new DRACOLoader());
+const map2MovingWater=[];
+function fitMap2Asset(gltf,name,targetLength,targetWidth,axis,position,groundY){
+ const model=gltf.scene;
+ model.updateMatrixWorld(true);
+ let bounds=new THREE.Box3().setFromObject(model);
+ let size=bounds.getSize(new THREE.Vector3());
+ if(size.x<.001||size.z<.001){
+  console.error(name+' asset has invalid dimensions',size.toArray());return null;
+ }
+ if((axis==='z'&&size.x>size.z)||(axis==='x'&&size.z>size.x)){
+  model.rotation.y=Math.PI/2;
+  model.updateMatrixWorld(true);
+  bounds=new THREE.Box3().setFromObject(model);
+  size=bounds.getSize(new THREE.Vector3());
+ }
+ const center=bounds.getCenter(new THREE.Vector3());
+ const sx=targetWidth/size.x,sz=targetLength/size.z;
+ model.scale.set(sx,Math.min(sx,sz),sz);
+ model.position.set(position.x-center.x*sx,groundY-bounds.min.y*Math.min(sx,sz),position.z-center.z*sz);
+ model.traverse(node=>{
+  if(!node.isMesh)return;
+  node.castShadow=true;node.receiveShadow=true;
+  const mats=Array.isArray(node.material)?node.material:[node.material];
+  mats.forEach(material=>{
+   if(material.map){material.map.wrapS=THREE.RepeatWrapping;material.map.wrapT=THREE.RepeatWrapping;material.map.needsUpdate=true;}
+   if(name==='river'){
+    material.transparent=material.transparent||false;
+    material.roughness=Math.min(material.roughness??.65,.38);
+    if(material.map)map2MovingWater.push(material.map);
+   }
+  });
+ });
+ model.name='SKA_MAP_02_'+name.toUpperCase();
+ map2World.add(model);
+ model.updateMatrixWorld(true);
+ console.info(name+' asset placed', {originalSize:size.toArray(),targetLength,targetWidth,position:model.position.toArray()});
+ return model;
+}
+function loadMap2Asset(url,name,length,width,axis,position,yOffset=0){
+ map2RoadAssetLoader.load(url,gltf=>{
+  const baseY=map2HeightAt(position.x,position.z)+yOffset;
+  fitMap2Asset(gltf,name,length,width,axis,position,baseY);
+ },undefined,error=>console.error(name+' GLB failed to load:',error));
+}
+// Paved approach overlaps the forest gravel road so the route stays connected.
+loadMap2Asset(americanRoadUrl,'city asphalt approach',125,9,'z',{x:0,z:175},.12);
+loadMap2Asset(gravelRoadUrl,'forest gravel road',330,7.5,'z',{x:0,z:-35},.10);
+// River flows across the route; the bridge deck spans it on the road's north-south axis.
+loadMap2Asset(riverModelUrl,'river',185,18,'x',{x:0,z:-45},-7.5);
+loadMap2Asset(bridgeModelUrl,'highway bridge',42,15,'z',{x:0,z:-45},3.2);
 // Keep the path mesh and player ground height aligned with the terrain.
 function map2SurfaceHeightAt(x,z,referenceY=null){
+ // Keep the character on the bridge deck while crossing the river gap.
+ if(Math.abs(z+45)<19&&Math.abs(x)<7.5)return map2HeightAt(0,-45)+3.2;
  // Use the scanned mesh's real surface where it exists; retain procedural terrain elsewhere.
  if(map2ImportedTerrain){
   map2ImportedTerrain.updateMatrixWorld(true);
@@ -1263,6 +1327,8 @@ renderer.domElement.addEventListener('wheel',e=>{
 function animate(){
  requestAnimationFrame(animate);
  const dt=Math.min(clock.getDelta(),.04);
+ // Animate the river's embedded texture so water visibly moves downstream.
+ for(const waterTexture of map2MovingWater)waterTexture.offset.x=(waterTexture.offset.x+dt*.035)%1;
  let x=moveX+(keys.d||keys.arrowright?1:0)-(keys.a||keys.arrowleft?1:0);
  let y=moveY+(keys.s||keys.arrowdown?1:0)-(keys.w||keys.arrowup?1:0);
  const length=Math.hypot(x,y); if(length>1){x/=length;y/=length}
