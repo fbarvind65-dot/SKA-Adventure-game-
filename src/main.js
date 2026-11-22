@@ -943,15 +943,19 @@ const map2World=new THREE.Group();
 map2World.name='SKA_MAP_02_WILDLANDS';
 map2World.visible=false;
 scene.add(map2World);
-const map2GroundGeometry=new THREE.PlaneGeometry(520,520,100,100);
+// One shared height function drives the terrain mesh, trees, rocks, path and player.
+function map2HeightAt(x,z){
+ const ridge=Math.max(0,1-Math.abs(Math.hypot(x,z)-175)/90);
+ const hillA=22*Math.exp(-((x-92)**2+(z+55)**2)/4200);
+ const hillB=15*Math.exp(-((x+105)**2+(z-95)**2)/3600);
+ return Math.sin(x*.018)*1.7+Math.cos(z*.021)*1.8+ridge*10+hillA+hillB-3.8;
+}
+const map2GroundGeometry=new THREE.PlaneGeometry(520,520,240,240);
 const map2Positions=map2GroundGeometry.attributes.position;
 const map2Colors=[];
 for(let i=0;i<map2Positions.count;i++){
  const x=map2Positions.getX(i),z=-map2Positions.getY(i);
- const ridge=Math.max(0,1-Math.abs(Math.hypot(x,z)-175)/90);
- const hillA=22*Math.exp(-((x-92)**2+(z+55)**2)/4200);
- const hillB=15*Math.exp(-((x+105)**2+(z-95)**2)/3600);
- const elevation=Math.sin(x*.018)*1.7+Math.cos(z*.021)*1.8+ridge*10+hillA+hillB-3.8;
+ const elevation=map2HeightAt(x,z);
  map2Positions.setZ(i,elevation);
  const shade=THREE.MathUtils.clamp(.72+elevation*.012+(Math.sin(x*.13+z*.08)*.045),.55,1.12);
  map2Colors.push(.82*shade,.94*shade,.72*shade);
@@ -971,16 +975,53 @@ const map2TrailPoints=[];
 for(let i=0;i<=24;i++){
  const z=220-i*18;
  const x=Math.sin(i*.24)*20-5;
- map2TrailPoints.push(new THREE.Vector3(x,2.1+Math.sin(x*.018)*2.2+Math.cos(z*.021)*2.4,z));
+ map2TrailPoints.push(new THREE.Vector3(x,map2HeightAt(x,z),z));
 }
 const map2TrailCurve=new THREE.CatmullRomCurve3(map2TrailPoints);
-const map2Trail=new THREE.Mesh(new THREE.TubeGeometry(map2TrailCurve,180,2.5,8,false),new THREE.MeshStandardMaterial({color:0x75634a,roughness:1}));
-map2Trail.position.y=-.15;map2Trail.receiveShadow=true;map2World.add(map2Trail);
+const map2PathSamples=map2TrailCurve.getPoints(240);
+const map2PathHalfWidth=2.5;
+const map2PathVertices=[],map2PathUvs=[],map2PathIndices=[];
+for(let i=0;i<map2PathSamples.length;i++){
+ const point=map2PathSamples[i];
+ const tangent=map2TrailCurve.getTangent(i/(map2PathSamples.length-1));
+ const sideX=-tangent.z,sideZ=tangent.x;
+ for(const side of [-1,1]){
+  const px=point.x+sideX*map2PathHalfWidth*side;
+  const pz=point.z+sideZ*map2PathHalfWidth*side;
+  map2PathVertices.push(px,map2HeightAt(px,pz)+.12,pz);
+  map2PathUvs.push(i/(map2PathSamples.length-1)*18,(side+1)*.5);
+ }
+ if(i<map2PathSamples.length-1){
+  const a=i*2,b=a+1,c=a+2,d=a+3;
+  map2PathIndices.push(a,c,b,b,c,d);
+ }
+}
+const map2PathGeometry=new THREE.BufferGeometry();
+map2PathGeometry.setAttribute('position',new THREE.Float32BufferAttribute(map2PathVertices,3));
+map2PathGeometry.setAttribute('uv',new THREE.Float32BufferAttribute(map2PathUvs,2));
+map2PathGeometry.setIndex(map2PathIndices);
+map2PathGeometry.computeVertexNormals();
+const map2Trail=new THREE.Mesh(map2PathGeometry,new THREE.MeshStandardMaterial({color:0x80664a,roughness:1,side:THREE.DoubleSide}));
+map2Trail.receiveShadow=true;map2World.add(map2Trail);
+// Give the player the raised dirt-trail surface when walking on the path.
+function map2SurfaceHeightAt(x,z){
+ let nearestSq=Infinity;
+ for(let i=0;i<map2PathSamples.length-1;i++){
+  const a=map2PathSamples[i],b=map2PathSamples[i+1];
+  const dx=b.x-a.x,dz=b.z-a.z;
+  const lenSq=dx*dx+dz*dz;
+  const t=lenSq>0?THREE.MathUtils.clamp(((x-a.x)*dx+(z-a.z)*dz)/lenSq,0,1):0;
+  const px=a.x+dx*t,pz=a.z+dz*t;
+  const distSq=(x-px)*(x-px)+(z-pz)*(z-pz);
+  if(distSq<nearestSq)nearestSq=distSq;
+ }
+ return map2HeightAt(x,z)+(nearestSq<=(map2PathHalfWidth-.12)**2?0.14:0.035);
+}
 const map2Bark=new THREE.MeshStandardMaterial({color:0x493426,roughness:1});
 const map2LeafMaterials=[0x263d25,0x304b2d,0x3b552f,0x4a6238,0x35472a].map(color=>new THREE.MeshStandardMaterial({color,roughness:.96}));
 const map2CrownGeometry=new THREE.SphereGeometry(2.1,12,10);
 function map2Tree(x,z,scale=1){
- const treeGroup=new THREE.Group();treeGroup.position.set(x,0,z);treeGroup.scale.setScalar(scale);map2World.add(treeGroup);
+ const treeGroup=new THREE.Group();treeGroup.position.set(x,map2HeightAt(x,z)-.12,z);treeGroup.scale.setScalar(scale);map2World.add(treeGroup);
  const trunk=new THREE.Mesh(new THREE.CylinderGeometry(.19,.42,6.2,10),map2Bark);trunk.position.y=3.1;trunk.castShadow=true;treeGroup.add(trunk);
  for(let branch=0;branch<3;branch++){
   const limb=new THREE.Mesh(new THREE.CylinderGeometry(.09,.16,2.7,7),map2Bark);
@@ -1012,7 +1053,7 @@ map2RockLoader.load(rockModelUrl,gltf=>{
  const rockSpots=[[-17,26,1.5],[21,44,2.2],[-35,82,1.8],[38,108,2.5],[12,-35,1.4],[-54,-72,2.8],[62,-95,1.9],[0,155,3.1]];
  for(const [x,z,size] of rockSpots){
   const rock=rockSource.clone(true);rock.scale.setScalar(rockScale*size);
-  rock.position.set(x,-rockBounds.min.y*rockScale*size,z);
+  rock.position.set(x,map2HeightAt(x,z)-rockBounds.min.y*rockScale*size-.06,z);
   rock.rotation.y=(x*13+z*7)*.017;map2World.add(rock);
  }
  console.info('Map 2 rock asset loaded:',rockSpots.length,'placed copies');
@@ -1153,7 +1194,7 @@ lobbyScreen.querySelector('#ska-lobby-play').addEventListener('click',async()=>{
  scene.background=new THREE.Color(0x9eb8c8);
  lobbyStageBase.visible=false; lobbyStageRing.visible=false;
  vehicles[0].position.copy(lobbyVehicleOriginal);
- player.position.set(activeMap==='map2'?0:0,0,activeMap==='map2'?8:18);
+ player.position.set(0,activeMap==='map2'?map2SurfaceHeightAt(0,8):0,activeMap==='map2'?8:18);
  hudRoot.style.display='block'; hud.style.display='block';
  cameraYaw=0;cameraPitch=.24;cameraDistance=8.5;
  updateHudLayout();
@@ -1223,7 +1264,8 @@ if(pickupLabel.style.display==='block'){const p=roadPickup.position.clone();p.y+
  if(jumpActive&&!isDriving){
   player.position.y+=jumpVelocity*dt;
   jumpVelocity-=15*dt;
-  if(player.position.y<=0){player.position.y=0;jumpVelocity=0;jumpActive=false;}
+  const landingHeight=map2World.visible?map2SurfaceHeightAt(player.position.x,player.position.z):0;
+  if(player.position.y<=landingHeight){player.position.y=landingHeight;jumpVelocity=0;jumpActive=false;}
  }
  // Clear last frame's prone overlay before the animation mixer advances.
  for(const e of proceduralRigBones){
@@ -1370,7 +1412,13 @@ if(pickupLabel.style.display==='block'){const p=roadPickup.position.clone();p.y+
   torso.position.y=THREE.MathUtils.damp(torso.position.y,0,10,dt);
   torso.rotation.x=THREE.MathUtils.damp(torso.rotation.x,0,8,dt);
  }
- // Fallback punch pose is applied to the visible imported character rig, not the hidden placeholder arms.
+   // Keep the character's feet on the Map 2 terrain and raised dirt path.
+  if(map2World.visible&&!isDriving){
+   const floorHeight=map2SurfaceHeightAt(player.position.x,player.position.z);
+   if(!jumpActive)player.position.y=floorHeight;
+   else if(player.position.y<floorHeight){player.position.y=floorHeight;jumpVelocity=0;jumpActive=false;}
+  }
+// Fallback punch pose is applied to the visible imported character rig, not the hidden placeholder arms.
  if(punchTimer>0){
   const swing=punchStrength;
   for(const e of proceduralRigBones){
