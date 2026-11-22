@@ -925,11 +925,7 @@ const hud=document.createElement('div');
 hud.style.cssText='position:fixed;top:max(14px,env(safe-area-inset-top));left:max(14px,env(safe-area-inset-left));z-index:4;color:#fff;text-shadow:0 2px 5px #000;background:#15232bd9;border:1px solid #ffffff45;border-radius:12px;padding:10px 13px;font-size:clamp(12px,2.5vw,14px);letter-spacing:.3px;backdrop-filter:blur(8px);pointer-events:none';
 hud.innerHTML='<strong style="font-size:17px;letter-spacing:1.4px">SKA ADVENTURE</strong><div style="margin-top:5px;color:#d6e2e7">OPEN WORLD · CITY DISTRICT</div>';
 app.appendChild(hud);
-const hint=document.createElement('div');
-hint.style.cssText='position:fixed;left:50%;transform:translateX(-50%);bottom:max(76px,calc(env(safe-area-inset-bottom) + 70px));z-index:4;padding:8px 11px;border-radius:9px;background:#15232bd9;color:#fff;font-size:clamp(10px,2.5vw,12px);border:1px solid #ffffff45;white-space:normal;text-align:center;max-width:76vw;pointer-events:none';
-hint.style.display='none';
-hint.textContent='Move: joystick · Hold RUN to sprint · Drag: 360° camera';
-app.appendChild(hint);
+// Removed the on-screen joystick/run/camera instruction text.
 
 
 /* Map 2: separate wildlands world. Map 1 objects are preserved and toggled, not rebuilt. */
@@ -1194,7 +1190,7 @@ window.addEventListener('pointermove',e=>{
  const dx=e.clientX-lastPointerX,dy=e.clientY-lastPointerY;
  lastPointerX=e.clientX;lastPointerY=e.clientY;
  cameraYaw-=dx*.008;
- cameraPitch=THREE.MathUtils.clamp(cameraPitch+dy*.006,-.12,1.05);
+ cameraPitch=THREE.MathUtils.clamp(cameraPitch+dy*.006,.08,1.05);
 });
 function stopCameraDrag(e){if(cameraPointer===e.pointerId)cameraPointer=null}
 window.addEventListener('pointerup',stopCameraDrag);
