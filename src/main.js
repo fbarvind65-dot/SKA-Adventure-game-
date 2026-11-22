@@ -11,7 +11,6 @@ import crouchWalkAnimationUrl from './Walk_-_crouched_forwards.glb?url';
 import punchAnimationUrl from './Punch_-_cross_right_2.glb?url';
 import rockModelUrl from '../assets/rocks/rock_1_montebu (1).glb?url';
 import rockySurfaceUrl from '../assets/rocky_surface_1 (1).glb?url';
-import americanRoadUrl from '../assets/american_road (1).glb?url';
 
 const app = document.querySelector('#app');
 document.body.style.cssText = 'margin:0;overflow:hidden;background:#9bb8c7;font-family:Arial,sans-serif;overscroll-behavior:none;touch-action:none';
@@ -125,7 +124,23 @@ function sphere(parent,r,material,x,y,z,sx=1,sy=1,sz=1){
 const ground= new THREE.Mesh(new THREE.PlaneGeometry(600,900,1,1),materials.grass);
 ground.rotation.x=-Math.PI/2; ground.position.set(-50,-.08,0); ground.receiveShadow=true; scene.add(ground);
 
-// Map 1's old procedural asphalt, side streets and lane markings are replaced by the American Road GLB.
+// Main avenue, sidewalks, lane markings and side streets.
+function road(x,z,w,d){
+ box(scene,w,.12,d,materials.asphalt,x,.0,z,false);
+}
+road(0,0,13,520);
+road(-48,0,9,520); road(48,0,9,520);
+road(0,-58,180,10); road(0,58,180,10);
+for(let z=-245;z<250;z+=12){
+ box(scene,.16,.025,5,materials.line,0,.075,z,false);
+}
+for(const side of [-1,1]){
+ box(scene,2.3,.18,520,materials.sidewalk,side*7.65,.12,0,false);
+ box(scene,2.3,.18,520,materials.sidewalk,side*10.5,.12,0,false);
+ for(let z=-240;z<250;z+=5){
+  box(scene,2.3,.19,.12,materials.concrete,side*7.65,.22,z,false);
+ }
+}
 
 // Town blocks: distinct buildings with real facades, rooflines, windows and doors.
 const windowMat=materials.glass;
@@ -930,48 +945,6 @@ map2World.visible=true;
 scene.add(map2World);
 
 // River visuals and river-specific animation removed for now.
-// Load the uploaded American Road GLB; normalize its bounds so it is not buried by its source origin.
-const americanRoadLoader=new GLTFLoader();
-americanRoadLoader.setMeshoptDecoder(MeshoptDecoder);
-americanRoadLoader.load(americanRoadUrl,(gltf)=>{
- const roadModel=gltf.scene;
- roadModel.updateMatrixWorld(true);
- let bounds=new THREE.Box3().setFromObject(roadModel);
- const size=bounds.getSize(new THREE.Vector3());
- // Fit along the GLB's ORIGINAL local axes before rotating it into the
- // north-south direction. Scaling world X/Z after a 90-degree rotation
- // swaps the road's width and length, which caused the previous fit to fail.
- const longAxisX=size.x>=size.z;
- const localLength=longAxisX?size.x:size.z;
- const localWidth=longAxisX?size.z:size.x;
- if(localLength>0&&localWidth>0){
-  if(longAxisX){
-   roadModel.scale.x*=520/localLength;
-   roadModel.scale.z*=14/localWidth;
-   roadModel.rotation.y=Math.PI/2;
-  }else{
-   roadModel.scale.z*=520/localLength;
-   roadModel.scale.x*=14/localWidth;
-  }
- }
- roadModel.updateMatrixWorld(true);
- bounds=new THREE.Box3().setFromObject(roadModel);
- const roadCenter=bounds.getCenter(new THREE.Vector3());
- // Match Map 1's original road: centerline X=0, Z=0, and its north-south (Z) direction.
- // The former road had 0-degree world yaw and sat on the ground plane at Y=-0.08.
- const MAP1_ROAD_X=0, MAP1_ROAD_Z=0, MAP1_ROAD_BOTTOM_Y=-0.06;
- roadModel.rotation.y=longAxisX?Math.PI/2:0;
- roadModel.updateMatrixWorld(true);
- bounds=new THREE.Box3().setFromObject(roadModel);
- const alignedRoadCenter=bounds.getCenter(new THREE.Vector3());
- roadModel.position.set(MAP1_ROAD_X-alignedRoadCenter.x,MAP1_ROAD_BOTTOM_Y-bounds.min.y,MAP1_ROAD_Z-alignedRoadCenter.z);
- roadModel.traverse(object=>{
-  if(object.isMesh){object.castShadow=true;object.receiveShadow=true;}
- });
- roadModel.name='SKA_AMERICAN_ROAD';
- scene.add(roadModel);
-},undefined,error=>console.error('American Road GLB failed to load:',error));
-
 // Old combined forest-road GLB intentionally disabled: Map 2 is rebuilt from separate assets.
 // One shared height function drives the terrain mesh, trees, rocks, path and player.
 function map2HeightAt(x,z){
