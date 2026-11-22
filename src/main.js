@@ -596,14 +596,8 @@ characterLoader.load(playerModelUrl, (gltf) => {
    walk: characterMixer.clipAction(walkClip),
    run: characterMixer.clipAction(runClip)
   };
-  // Keep the arms in a relaxed idle pose while the crouch clip animates legs.
-  const crouchUpperClip=idleClip.clone();
-  crouchUpperClip.name='SKA_Crouch_Upper_Idle';
-  crouchUpperClip.tracks=crouchUpperClip.tracks.filter(track=>{
-   const node=normalizeBoneName(track.name.slice(0,track.name.lastIndexOf('.'))).replace(/^bip01/,'');
-   return /(upperarm|forearm|hand|clavicle|shoulder|arm)$/.test(node);
-  });
-  if(crouchUpperClip.tracks.length)crouchUpperAction=characterMixer.clipAction(crouchUpperClip);
+  // The source idle upper-body clip raises/spreads the arms while crouching.
+  // Do not layer that clip; retain the character's regular idle/walk arm pose.
   setCharacterAnimation('idle');
  }
 }, undefined, (error) => {
@@ -988,7 +982,7 @@ for(let i=0;i<map2PathSamples.length;i++){
  for(const side of [-1,1]){
   const px=point.x+sideX*map2PathHalfWidth*side;
   const pz=point.z+sideZ*map2PathHalfWidth*side;
-  map2PathVertices.push(px,map2HeightAt(px,pz)+.12,pz);
+  map2PathVertices.push(px,map2HeightAt(px,pz)+.34,pz);
   map2PathUvs.push(i/(map2PathSamples.length-1)*18,(side+1)*.5);
  }
  if(i<map2PathSamples.length-1){
@@ -1015,7 +1009,7 @@ function map2SurfaceHeightAt(x,z){
   const distSq=(x-px)*(x-px)+(z-pz)*(z-pz);
   if(distSq<nearestSq)nearestSq=distSq;
  }
- return map2HeightAt(x,z)+(nearestSq<=(map2PathHalfWidth-.12)**2?0.14:0.035);
+ return map2HeightAt(x,z)+(nearestSq<=(map2PathHalfWidth-.12)**2?0.36:0.035);
 }
 const map2Bark=new THREE.MeshStandardMaterial({color:0x493426,roughness:1});
 const map2LeafMaterials=[0x263d25,0x304b2d,0x3b552f,0x4a6238,0x35472a].map(color=>new THREE.MeshStandardMaterial({color,roughness:.96}));
@@ -1278,7 +1272,7 @@ if(pickupLabel.style.display==='block'){const p=roadPickup.position.clone();p.y+
   }else if(sitStandBusy){
    if(crouchWalkAction)crouchWalkAction.stop();
   }else if(playerStance==='crouch'){
-   if(crouchUpperAction&&!crouchUpperAction.isRunning())crouchUpperAction.reset().setEffectiveWeight(.75).fadeIn(.14).play();
+   if(crouchUpperAction)crouchUpperAction.stop();
    if(moving&&crouchWalkAction){
     if(!crouchWalkAction.isRunning()){
      if(activeCharacterAction&&activeCharacterAction!==crouchWalkAction)activeCharacterAction.fadeOut(.12);
