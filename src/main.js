@@ -10,7 +10,6 @@ import sitStandBundleUrl from './Business_Female_02-rigged-animated.glb?url';
 import crouchWalkAnimationUrl from './Walk_-_crouched_forwards.glb?url';
 import punchAnimationUrl from './Punch_-_cross_right_2.glb?url';
 import rockModelUrl from '../assets/rocks/rock_1_montebu (1).glb?url';
-import terrainModelUrl from '../assets/update_dirt_road_through_forest (2).glb?url';
 
 const app = document.querySelector('#app');
 document.body.style.cssText = 'margin:0;overflow:hidden;background:#9bb8c7;font-family:Arial,sans-serif;overscroll-behavior:none;touch-action:none';
@@ -943,42 +942,7 @@ map2World.name='SKA_MAP_02_WILDLANDS';
 map2World.visible=false;
 scene.add(map2World);
 
-// Load the uploaded forest-road GLB into Map 2. Normalize its footprint and center it
-// so different source-model origins do not place the environment far off the map.
-const map2TerrainLoader=new GLTFLoader();
-map2TerrainLoader.setMeshoptDecoder(MeshoptDecoder);
-const map2TerrainDracoLoader=new DRACOLoader();
-map2TerrainDracoLoader.setDecoderPath('https://www.gstatic.com/draco/v1/decoders/');
-map2TerrainLoader.setDRACOLoader(map2TerrainDracoLoader);
-map2TerrainLoader.load(terrainModelUrl,gltf=>{
- const terrainScene=gltf.scene;
- terrainScene.updateMatrixWorld(true);
- terrainScene.traverse(object=>{
-  if(object.isMesh){
-   object.visible=true;
-   object.castShadow=true;
-   object.receiveShadow=true;
-   object.frustumCulled=false;
-  }
- });
- const sourceBounds=new THREE.Box3().setFromObject(terrainScene);
- const sourceSize=sourceBounds.getSize(new THREE.Vector3());
- const horizontalSize=Math.max(sourceSize.x,sourceSize.z,1);
- terrainScene.scale.setScalar(460/horizontalSize);
- terrainScene.updateMatrixWorld(true);
- const terrainBounds=new THREE.Box3().setFromObject(terrainScene);
- terrainScene.position.x-=(terrainBounds.min.x+terrainBounds.max.x)*.5;
- terrainScene.position.z-=(terrainBounds.min.z+terrainBounds.max.z)*.5;
- terrainScene.position.y+=map2HeightAt(0,0)-terrainBounds.min.y;
- map2World.add(terrainScene);
- map2ImportedTerrain=terrainScene;
- map2TerrainHeightCache.clear();
- console.info('Map 2 forest-road GLB loaded:',sourceSize.toArray());
- toast('Forest terrain loaded in Map 2');
-},undefined,error=>{
- console.error('Map 2 forest-road GLB failed to load:',error);
- toast('Forest terrain failed to load: '+(error?.message||'GLB error'));
-});
+// Old combined forest-road GLB intentionally disabled: Map 2 is rebuilt from separate assets.
 // One shared height function drives the terrain mesh, trees, rocks, path and player.
 function map2HeightAt(x,z){
  const ridge=Math.max(0,1-Math.abs(Math.hypot(x,z)-175)/90);
@@ -1006,7 +970,7 @@ for(let p=0;p<map2TexturePixels.data.length;p+=4){const grain=Math.random()*34;m
 map2TextureContext.putImageData(map2TexturePixels,0,0);
 const map2GroundTexture=new THREE.CanvasTexture(map2TextureCanvas);map2GroundTexture.wrapS=map2GroundTexture.wrapT=THREE.RepeatWrapping;map2GroundTexture.repeat.set(14,14);map2GroundTexture.colorSpace=THREE.SRGBColorSpace;
 const map2Ground=new THREE.Mesh(map2GroundGeometry,new THREE.MeshStandardMaterial({map:map2GroundTexture,vertexColors:true,roughness:1}));
-map2Ground.receiveShadow=true;map2Ground.visible=false;map2World.add(map2Ground); // Hide old generated ground below the downloaded GLB.
+map2Ground.receiveShadow=true;map2Ground.visible=true;map2World.add(map2Ground); // Stable Map 2 foundation; separate assets will be placed on top.
 const map2TrailPoints=[];
 for(let i=0;i<=24;i++){
  const z=220-i*18;
@@ -1041,36 +1005,8 @@ const map2Trail=new THREE.Mesh(map2PathGeometry,new THREE.MeshStandardMaterial({
 map2Trail.receiveShadow=true;map2Trail.visible=false;map2World.add(map2Trail); // Hide old generated path.
 // Keep the path mesh and player ground height aligned with the terrain.
 function map2SurfaceHeightAt(x,z,referenceY=null){
- if(map2ImportedTerrain){
-  // Fine sampling reduces height steps. Include the player's current height in
-  // the cache key so a nearby tree canopy cannot reuse a previously cached top.
-  const cell=.18;
-  const sampleX=Math.round(x/cell)*cell,sampleZ=Math.round(z/cell)*cell;
-  const referenceKey=referenceY===null?'none':Math.round(referenceY*2)/2;
-  const key=sampleX+','+sampleZ+','+referenceKey;
-  if(map2TerrainHeightCache.has(key))return map2TerrainHeightCache.get(key);
-  map2ImportedTerrain.updateMatrixWorld(true);
-  const terrainBox=new THREE.Box3().setFromObject(map2ImportedTerrain);
-  map2TerrainRaycaster.set(new THREE.Vector3(sampleX,terrainBox.max.y+15,sampleZ),new THREE.Vector3(0,-1,0));
-  const hits=map2TerrainRaycaster.intersectObject(map2ImportedTerrain,true);
-  let bestHit=null,bestDifference=Infinity;
-  for(const hit of hits){
-   if(!hit.face)continue;
-   const normal=hit.face.normal.clone().transformDirection(hit.object.matrixWorld);
-   if(normal.y<.55)continue;
-   // Ignore elevated tree/branch surfaces while the character is grounded.
-   const difference=referenceY===null?0:Math.abs(hit.point.y-referenceY);
-   if(referenceY!==null&&hit.point.y>referenceY+1.25)continue;
-   if(difference<bestDifference){bestHit=hit;bestDifference=difference;}
-  }
-  if(bestHit){
-   const groundY=bestHit.point.y+.045;
-   if(map2TerrainHeightCache.size>18000)map2TerrainHeightCache.clear();
-   map2TerrainHeightCache.set(key,groundY);
-   return groundY;
-  }
- }
- return referenceY===null?map2HeightAt(x,z)+.035:referenceY;
+ // Stable flat foundation while individually sourced environment assets are added.
+ return 0;
 }
 const map2Bark=new THREE.MeshStandardMaterial({color:0x493426,roughness:1});
 const map2LeafMaterials=[0x263d25,0x304b2d,0x3b552f,0x4a6238,0x35472a].map(color=>new THREE.MeshStandardMaterial({color,roughness:.96}));
@@ -1097,33 +1033,7 @@ for(let i=0;i<0;i++){ // The downloaded GLB already has trees; disable generated
  if(Math.abs(x-Math.sin((220-z)/18*.24)*20+5)<13)continue;
  map2Tree(x,z,.8+((i*13)%48)/100);
 }
-const map2RockLoader=new GLTFLoader();
-map2RockLoader.setMeshoptDecoder(MeshoptDecoder);
-// Decode Draco-compressed geometry used by many optimized Sketchfab GLBs.
-const map2RockDracoLoader=new DRACOLoader();
-map2RockDracoLoader.setDecoderPath('https://www.gstatic.com/draco/v1/decoders/');
-map2RockLoader.setDRACOLoader(map2RockDracoLoader);
-map2RockLoader.load(rockModelUrl,gltf=>{
- const rockSource=gltf.scene;
- rockSource.updateMatrixWorld(true);
- rockSource.traverse(object=>{if(object.isMesh){object.visible=true;object.castShadow=true;object.receiveShadow=true;object.frustumCulled=false;}});
- const rockBounds=new THREE.Box3().setFromObject(rockSource);
- const rockSize=rockBounds.getSize(new THREE.Vector3());
- const rockScale=3.2/Math.max(rockSize.y,.01);
- // The default camera stands behind the player and looks toward negative Z.
- // Keep the first rocks ahead of the spawn and just outside the dirt trail.
- // Map 2 player spawn is (x=0,z=8): keep boulders within the visible start area.
- const rockSpots=[[0,-2,2.2],[7,-10,1.25],[-7,-24,1.2],[9,-40,1.35],[-9,-55,1.3],[7,-70,1.45],[-7,-85,1.4]];
- for(const [x,z,size] of rockSpots){
-  const rock=rockSource.clone(true);rock.scale.setScalar(rockScale*size);
-  rock.position.set(x,map2SurfaceHeightAt(x,z)-rockBounds.min.y*rockScale*size,z);
-  rock.rotation.y=(x*13+z*7)*.017;
-  rock.traverse(object=>{if(object.isMesh){object.visible=true;object.frustumCulled=false;}});
-  map2World.add(rock);
- }
- console.info('Map 2 Rock 1 Montebu loaded:',rockSpots.length,'copies',rockSize.toArray());
- toast('Rock 1 loaded · 6 placed in front of spawn');
-},undefined,error=>{console.error('Map 2 rock GLB failed to load:',error);toast('Rock 1 failed to load: '+(error?.message||'GLB error'));});
+// Previous auto-scattered rock GLB placement disabled for the clean asset-by-asset rebuild.
 function setWorldMap(mapId){
  const wildlands=mapId==='map2';
  map1WorldObjects.forEach(object=>object.visible=!wildlands);
