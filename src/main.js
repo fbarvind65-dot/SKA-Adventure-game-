@@ -327,7 +327,8 @@ let characterActions = {};
 let activeCharacterAction = null;
 let characterAnimationState = '';
 let pronePoseBlend=0, crouchWalkPoseBlend=0;
-let sitAction=null, standAction=null, crouchWalkAction=null, punchAction=null, punchPlaying=false;
+let sitAction=null, standAction=null, crouchWalkAction=null, crouchUpperAction=null, punchAction=null, punchPlaying=false;
+let crouchPoseBlend=0;
 let sitStandBusy=false, isSitting=false, pendingStanceAfterStand='stand';
 const characterLoader = new GLTFLoader();
 characterLoader.setMeshoptDecoder(MeshoptDecoder);
@@ -610,6 +611,14 @@ characterLoader.load(playerModelUrl, (gltf) => {
    walk: characterMixer.clipAction(walkClip),
    run: characterMixer.clipAction(runClip)
   };
+  // Keep the arms in a relaxed idle pose while the crouch clip animates legs.
+  const crouchUpperClip=idleClip.clone();
+  crouchUpperClip.name='SKA_Crouch_Upper_Idle';
+  crouchUpperClip.tracks=crouchUpperClip.tracks.filter(track=>{
+   const node=normalizeBoneName(track.name.slice(0,track.name.lastIndexOf('.'))).replace(/^bip01/,'');
+   return /(upperarm|forearm|hand|clavicle|shoulder|arm)$/.test(node);
+  });
+  if(crouchUpperClip.tracks.length)crouchUpperAction=characterMixer.clipAction(crouchUpperClip);
   setCharacterAnimation('idle');
  }
 }, undefined, (error) => {
@@ -1241,6 +1250,7 @@ if(pickupLabel.style.display==='block'){const p=roadPickup.position.clone();p.y+
   }else if(sitStandBusy){
    if(crouchWalkAction)crouchWalkAction.stop();
   }else if(playerStance==='crouch'){
+   if(crouchUpperAction&&!crouchUpperAction.isRunning())crouchUpperAction.reset().setEffectiveWeight(.75).fadeIn(.14).play();
    if(moving&&crouchWalkAction){
     if(!crouchWalkAction.isRunning()){
      if(activeCharacterAction&&activeCharacterAction!==crouchWalkAction)activeCharacterAction.fadeOut(.12);
@@ -1271,6 +1281,7 @@ if(pickupLabel.style.display==='block'){const p=roadPickup.position.clone();p.y+
    }
   }else{
    if(crouchWalkAction)crouchWalkAction.stop();
+   if(crouchUpperAction)crouchUpperAction.fadeOut(.12);
    const sprinting=keys.shift||joystickStrength>0.9;
    setCharacterAnimation(moving?(sprinting?'run':'walk'):'idle');
   }
@@ -1281,11 +1292,20 @@ if(pickupLabel.style.display==='block'){const p=roadPickup.position.clone();p.y+
  const punchStrength=punchTimer>0?Math.sin(Math.min(1,punchTimer/.18)*Math.PI/2)*Math.min(1,punchTimer/.12):0;
  const crouchWalking=playerStance==='crouch'&&moving&&!sitStandBusy;
  crouchWalkPoseBlend=THREE.MathUtils.damp(crouchWalkPoseBlend,crouchWalking?1:0,7,dt);
- // The uploaded crouch-walk GLB already contains its crouched body pose.
- // Do not add a second procedural hips/spine bend here: stacking both poses
- // was forcing the character into an exaggerated forward lean.
- // Use the authored retargeted crouch clips rather than guessed per-bone
- // Euler offsets; the character rig's local axes differ by joint.
+ crouchPoseBlend=THREE.MathUtils.damp(crouchPoseBlend,playerStance==='crouch'&&!sitStandBusy?1:0,9,dt);
+ // Small additive posture bend; the GLB provides alternating steps while
+ // this keeps hips lowered and knees flexed without the source root lean.
+ if(proceduralRigBones.length&&crouchPoseBlend>.001){
+  for(const e of proceduralRigBones){
+   let pose=0;
+   if(e.role==='hips')pose=.14;
+   else if(e.role==='leg')pose=.30;
+   else if(e.role==='knee')pose=-.52;
+   else if(e.role==='spine')pose=-.08;
+   e.bone.rotation.x+=pose*crouchPoseBlend;
+   e.appliedOffset=pose*crouchPoseBlend;
+  }
+ }
  if(proceduralRigBones.length&&playerStance==='prone'){
   for(const e of proceduralRigBones){
    let pose=0;
