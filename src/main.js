@@ -925,11 +925,11 @@ const hud=document.createElement('div');
 hud.style.cssText='position:fixed;top:max(14px,env(safe-area-inset-top));left:max(14px,env(safe-area-inset-left));z-index:4;color:#fff;text-shadow:0 2px 5px #000;background:#15232bd9;border:1px solid #ffffff45;border-radius:12px;padding:10px 13px;font-size:clamp(12px,2.5vw,14px);letter-spacing:.3px;backdrop-filter:blur(8px);pointer-events:none';
 hud.innerHTML='<strong style="font-size:17px;letter-spacing:1.4px">SKA ADVENTURE</strong><div style="margin-top:5px;color:#d6e2e7">OPEN WORLD · CITY DISTRICT</div>';
 app.appendChild(hud);
-// Remove only the obsolete movement instruction label; keep the actual joystick and buttons.
+// Remove only the obsolete centre-bottom joystick / sprint / camera instruction.
 function removeMovementInstructionLabel(root=document.body){
  const matchesInstruction=value=>{
   const text=(value||'').replace(/\s+/g,' ').trim().toLowerCase();
-  return text.includes('joystick')&&/\bmove\b/.test(text)&&/\brun\b/.test(text);
+  return text.includes('joystick')&&text.includes('run')&&text.includes('sprint')&&text.includes('drag')&&text.includes('camera')&&(text.includes('360')||text.includes('360°'));
  };
  for(const element of Array.from(root.querySelectorAll('*'))){
   if(!element.isConnected||element===document.body||element===document.documentElement)continue;
@@ -941,7 +941,7 @@ function removeMovementInstructionLabel(root=document.body){
 }
 removeMovementInstructionLabel();
 const movementInstructionObserver=new MutationObserver(()=>removeMovementInstructionLabel());
-movementInstructionObserver.observe(document.body,{childList:true,subtree:true});
+movementInstructionObserver.observe(document.body,{childList:true,subtree:true,characterData:true});
 
 
 /* Map 2: separate wildlands world. Map 1 objects are preserved and toggled, not rebuilt. */
