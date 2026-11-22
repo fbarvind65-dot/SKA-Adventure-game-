@@ -126,9 +126,9 @@ ground.rotation.x=-Math.PI/2; ground.position.set(-50,-.08,0); ground.receiveSha
 
 // Main avenue, sidewalks, lane markings and side streets.
 function road(x,z,w,d){
- return box(scene,w,.12,d,materials.asphalt,x,.0,z,false);
+ box(scene,w,.12,d,materials.asphalt,x,.0,z,false);
 }
-const map1MainRoad=road(0,0,13,520);
+road(0,0,13,520);
 road(-48,0,9,520); road(48,0,9,520);
 road(0,-58,180,10); road(0,58,180,10);
 for(let z=-245;z<250;z+=12){
@@ -1045,13 +1045,7 @@ map2PathGeometry.setAttribute('uv',new THREE.Float32BufferAttribute(map2PathUvs,
 map2PathGeometry.setIndex(map2PathIndices);
 map2PathGeometry.computeVertexNormals();
 const map2Trail=new THREE.Mesh(map2PathGeometry,new THREE.MeshStandardMaterial({color:0x80664a,roughness:1,side:THREE.DoubleSide}));
-map2Trail.receiveShadow=true;map2Trail.visible=true;map2World.add(map2Trail);
-// Use Map 2's same curved dirt-road mesh in Map 1 as requested.
-const map1Map2Road=new THREE.Mesh(map2PathGeometry,map2Trail.material.clone());
-map1Map2Road.name='SKA_MAP_01_ROAD_FROM_MAP_02';
-map1Map2Road.receiveShadow=true;
-scene.add(map1Map2Road);
-map1MainRoad.visible=false;
+map2Trail.receiveShadow=true;map2Trail.visible=false;map2World.add(map2Trail); // Map 2 trail kept disabled until road assets are finalized.
 
 // Keep the path mesh and player ground height aligned with the terrain.
 function map2SurfaceHeightAt(x,z,referenceY=null){
