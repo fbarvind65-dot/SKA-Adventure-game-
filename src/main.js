@@ -983,7 +983,7 @@ for(let i=0;i<map2PathSamples.length;i++){
  for(const side of [-1,1]){
   const px=point.x+sideX*map2PathHalfWidth*side;
   const pz=point.z+sideZ*map2PathHalfWidth*side;
-  map2PathVertices.push(px,map2HeightAt(px,pz)+.38,pz);
+  map2PathVertices.push(px,map2HeightAt(px,pz)+.50,pz);
   map2PathUvs.push(i/(map2PathSamples.length-1)*18,(side+1)*.5);
  }
  if(i<map2PathSamples.length-1){
@@ -1056,7 +1056,7 @@ map2RockLoader.load(rockModelUrl,gltf=>{
  const rockSpots=[[3.2,8,1.25],[-3.2,9,1.2],[4.5,3,1.35],[-4.5,2,1.3],[2.8,14,1.45],[-2.8,15,1.4]];
  for(const [x,z,size] of rockSpots){
   const rock=rockSource.clone(true);rock.scale.setScalar(rockScale*size);
-  rock.position.set(x,map2SurfaceHeightAt(x,z)-rockBounds.min.y*rockScale*size+.37,z);
+  rock.position.set(x,map2SurfaceHeightAt(x,z)-rockBounds.min.y*rockScale*size+6.5,z);
   rock.rotation.y=(x*13+z*7)*.017;
   rock.traverse(object=>{if(object.isMesh){object.visible=true;object.frustumCulled=false;}});
   map2World.add(rock);
