@@ -548,35 +548,20 @@ characterLoader.load(playerModelUrl, (gltf) => {
     setCharacterAnimation('idle');
    }
   });
-  // Retarget the newly uploaded crouched-forward walk onto the same BIP01 rig.
-  characterLoader.load(crouchWalkAnimationUrl,crouchGltf=>{
-   const crouchBones=new Map();
-   crouchGltf.scene.updateMatrixWorld(true);
-   crouchGltf.scene.traverse(object=>{
-    if(object.isBone){
-     const key=normalizeBoneName(object.name).replace(/^mixamorig/,'');
-     crouchBones.set(key,object);
-    }
-   });
-   const sourceCrouchClip=crouchGltf.animations?.find(clip=>/crouch|walk/i.test(clip.name))||crouchGltf.animations?.[0];
-   if(!sourceCrouchClip){console.warn('Crouched walk GLB has no animation clip');toast('Crouch walk clip missing');return;}
-   const mappedCrouchClip=retargetClip(sourceCrouchClip,true,crouchBones,true);
-   // Keep the crouch-walk clip focused on lower-body motion; its arm tracks
-   // were retargeting into a wide, upright pose on this character.
-   mappedCrouchClip.tracks=mappedCrouchClip.tracks.filter(track=>{
-    const node=normalizeBoneName(track.name.slice(0,track.name.lastIndexOf('.'))).replace(/^bip01/,'');
-    // Keep the animation on the leg chain only. The source GLB's pelvis/spine
-    // tracks tilt the retargeted body backward on this character and cause
-    // the crouch-walk to look like a seated slide.
-    return /^(lthigh|rthigh|lcalf|rcalf|lfoot|rfoot|ltoe0|rtoe0)$/.test(node);
-   });
-   if(!mappedCrouchClip.tracks.length){console.warn('Crouched walk retarget found no matching BIP01 tracks',sourceCrouchClip.tracks.map(t=>t.name));toast('Crouch walk rig mapping failed');return;}
-   if(crouchWalkAction)crouchWalkAction.stop();
-   crouchWalkAction=characterMixer.clipAction(mappedCrouchClip);
+  // Reuse the working walk gait for crouch steps; the separate crawl GLB
+  // was making the player collapse sideways. Lowered hips and bent knees
+  // are applied procedurally in the animation frame.
+  const safeCrouchClip=walkClip.clone();
+  safeCrouchClip.name='SKA_Stable_Crouch_Walk';
+  safeCrouchClip.tracks=safeCrouchClip.tracks.filter(track=>{
+   const node=normalizeBoneName(track.name.slice(0,track.name.lastIndexOf('.'))).replace(/^bip01/,'');
+   return /^(lthigh|rthigh|lcalf|rcalf|lfoot|rfoot|ltoe0|rtoe0)$/.test(node);
+  });
+  if(safeCrouchClip.tracks.length){
+   crouchWalkAction=characterMixer.clipAction(safeCrouchClip);
    crouchWalkAction.setLoop(THREE.LoopRepeat,Infinity);
-   crouchWalkAction.timeScale=.78;
-   console.info('Retargeted crouched-forward walk to BIP01:',mappedCrouchClip.tracks.length,'tracks');
-  },undefined,error=>{console.warn('Crouched walk GLB failed to load:',error);toast('Crouch walk animation failed to load');});
+   crouchWalkAction.timeScale=.58;
+  }
   // Load the uploaded right-cross punch and retarget it to the active BIP01 rig.
   characterLoader.load(punchAnimationUrl,punchGltf=>{
    const punchBones=new Map();
@@ -902,15 +887,15 @@ wireButtonAction(proneButton,()=>{
 });
 wireButtonAction(punchButton,()=>{
  if(!gameStarted||isDriving||isSitting||playerStance!=='stand'||jumpActive||sitStandBusy)return;
- if(activeCharacterAction&&activeCharacterAction!==punchAction)activeCharacterAction.fadeOut(.08);
- if(punchAction){
-  punchTimer=0;
-  punchAction.stopFading();punchAction.enabled=true;punchAction.paused=false;
-  punchAction.reset().setLoop(THREE.LoopOnce,1).setEffectiveTimeScale(1).setEffectiveWeight(1).fadeIn(.06).play();
-  punchPlaying=true;activeCharacterAction=punchAction;characterAnimationState='punch';
- }else{
-  punchTimer=.42;punchPlaying=false;
- }
+ // Stop locomotion and imported punch tracks, which blended into a T-pose.
+ Object.values(characterActions).forEach(action=>{if(action)action.stop();});
+ if(crouchWalkAction)crouchWalkAction.stop();
+ if(crouchUpperAction)crouchUpperAction.stop();
+ if(sitAction)sitAction.stop();
+ if(standAction)standAction.stop();
+ if(punchAction)punchAction.stop();
+ activeCharacterAction=null;characterAnimationState='punch';
+ punchTimer=.42;punchPlaying=true;
  toast(equippedItem?equippedItem.name:'Mukka');
 });
 wireButtonAction(jumpButton,()=>{
@@ -1289,7 +1274,9 @@ if(pickupLabel.style.display==='block'){const p=roadPickup.position.clone();p.y+
  }
  pronePoseBlend=THREE.MathUtils.damp(pronePoseBlend,playerStance==='prone'?1:0,8,dt);
  punchTimer=Math.max(0,punchTimer-dt);
- const punchStrength=punchTimer>0?Math.sin(Math.min(1,punchTimer/.18)*Math.PI/2)*Math.min(1,punchTimer/.12):0;
+ const punchProgress=THREE.MathUtils.clamp(1-punchTimer/.42,0,1);
+ const punchStrength=punchTimer>0?Math.sin(punchProgress*Math.PI):0;
+ if(punchTimer<=0&&punchPlaying){punchPlaying=false;activeCharacterAction=null;characterAnimationState='';}
  const crouchWalking=playerStance==='crouch'&&moving&&!sitStandBusy;
  crouchWalkPoseBlend=THREE.MathUtils.damp(crouchWalkPoseBlend,crouchWalking?1:0,7,dt);
  crouchPoseBlend=THREE.MathUtils.damp(crouchPoseBlend,playerStance==='crouch'&&!sitStandBusy?1:0,9,dt);
@@ -1298,10 +1285,10 @@ if(pickupLabel.style.display==='block'){const p=roadPickup.position.clone();p.y+
  if(proceduralRigBones.length&&crouchPoseBlend>.001){
   for(const e of proceduralRigBones){
    let pose=0;
-   if(e.role==='hips')pose=.14;
-   else if(e.role==='leg')pose=.30;
-   else if(e.role==='knee')pose=-.52;
-   else if(e.role==='spine')pose=-.08;
+   if(e.role==='hips')pose=.04;
+   else if(e.role==='leg')pose=.46;
+   else if(e.role==='knee')pose=-.78;
+   else if(e.role==='spine')pose=.015;
    e.bone.rotation.x+=pose*crouchPoseBlend;
    e.appliedOffset=pose*crouchPoseBlend;
   }
@@ -1387,8 +1374,14 @@ if(pickupLabel.style.display==='block'){const p=roadPickup.position.clone();p.y+
  if(punchTimer>0){
   const swing=punchStrength;
   for(const e of proceduralRigBones){
-   if(e.role==='arm'&&e.side===-1){const pose=-1.05*swing;e.bone.rotation.x+=pose;e.appliedOffset+=pose;}
-   else if(e.role==='forearm'&&e.side===-1){const pose=-.48*swing;e.bone.rotation.x+=pose;e.appliedOffset+=pose;}
+   if(e.role==='arm'&&e.side===-1){
+    const pose=-1.18*swing;e.bone.rotation.x+=pose;e.appliedOffset+=pose;
+    const twist=.16*swing;e.bone.rotation.z+=twist;e.appliedOffset+=twist;
+   }else if(e.role==='forearm'&&e.side===-1){
+    const pose=-.82*swing;e.bone.rotation.x+=pose;e.appliedOffset+=pose;
+   }else if(e.role==='arm'&&e.side===1){
+    const pose=.18*swing;e.bone.rotation.x+=pose;e.appliedOffset+=pose;
+   }
   }
  }
  const currentCameraDistance=gameStarted&&map2World.visible?Math.min(cameraDistance,6.2):cameraDistance;
