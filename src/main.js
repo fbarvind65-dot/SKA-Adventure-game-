@@ -958,10 +958,14 @@ scene.add(map2World);
 // Old combined forest-road GLB intentionally disabled: Map 2 is rebuilt from separate assets.
 // One shared height function drives the terrain mesh, trees, rocks, path and player.
 function map2HeightAt(x,z){
- const ridge=Math.max(0,1-Math.abs(Math.hypot(x,z)-175)/90);
- const hillA=22*Math.exp(-((x-92)**2+(z+55)**2)/4200);
- const hillB=15*Math.exp(-((x+105)**2+(z-95)**2)/3600);
- return Math.sin(x*.018)*1.7+Math.cos(z*.021)*1.8+ridge*10+hillA+hillB-3.8;
+ // Broad ridges and broken rocky slopes, with smaller natural surface variation.
+ const distance=Math.hypot(x,z);
+ const ridge=Math.max(0,1-Math.abs(distance-175)/105);
+ const hillA=34*Math.exp(-((x-92)**2+(z+55)**2)/5200);
+ const hillB=27*Math.exp(-((x+105)**2+(z-95)**2)/4600);
+ const rolling=Math.sin(x*.014+Math.sin(z*.009)*1.8)*4.2+Math.cos(z*.017+Math.sin(x*.012)*1.5)*3.6;
+ const brokenRock=Math.sin(x*.061+z*.027)*1.15+Math.cos(z*.073-x*.019)*.9+Math.sin((x-z)*.11)*.42;
+ return rolling+brokenRock+ridge*19+hillA+hillB-5.5;
 }
 const map2GroundGeometry=new THREE.PlaneGeometry(800,800,360,360);
 const map2Positions=map2GroundGeometry.attributes.position;
@@ -979,7 +983,7 @@ map2GroundGeometry.rotateX(-Math.PI/2);
 const map2TextureCanvas=document.createElement('canvas');map2TextureCanvas.width=map2TextureCanvas.height=512;
 const map2TextureContext=map2TextureCanvas.getContext('2d');
 const map2TexturePixels=map2TextureContext.createImageData(512,512);
-for(let p=0;p<map2TexturePixels.data.length;p+=4){const grain=Math.random()*34;map2TexturePixels.data[p]=94+grain;map2TexturePixels.data[p+1]=123+grain;map2TexturePixels.data[p+2]=68+grain*.55;map2TexturePixels.data[p+3]=255;}
+for(let p=0;p<map2TexturePixels.data.length;p+=4){const grain=Math.random()*42;const strata=Math.sin((p/4%512)*.035)*7;map2TexturePixels.data[p]=104+grain+strata;map2TexturePixels.data[p+1]=99+grain*.82+strata;map2TexturePixels.data[p+2]=84+grain*.62+strata*.7;map2TexturePixels.data[p+3]=255;}
 map2TextureContext.putImageData(map2TexturePixels,0,0);
 const map2GroundTexture=new THREE.CanvasTexture(map2TextureCanvas);map2GroundTexture.wrapS=map2GroundTexture.wrapT=THREE.RepeatWrapping;map2GroundTexture.repeat.set(22,22);map2GroundTexture.colorSpace=THREE.SRGBColorSpace;
 const map2Ground=new THREE.Mesh(map2GroundGeometry,new THREE.MeshStandardMaterial({map:map2GroundTexture,vertexColors:true,roughness:1,side:THREE.DoubleSide}));
