@@ -10,6 +10,7 @@ import sitStandBundleUrl from './Business_Female_02-rigged-animated.glb?url';
 import crouchWalkAnimationUrl from './Walk_-_crouched_forwards.glb?url';
 import punchAnimationUrl from './Punch_-_cross_right_2.glb?url';
 import rockModelUrl from '../assets/rocks/rock_1_montebu (1).glb?url';
+import rockySurfaceUrl from '../assets/rocky_surface_1 (1).glb?url';
 
 const app = document.querySelector('#app');
 document.body.style.cssText = 'margin:0;overflow:hidden;background:#9bb8c7;font-family:Arial,sans-serif;overscroll-behavior:none;touch-action:none';
@@ -982,7 +983,39 @@ for(let p=0;p<map2TexturePixels.data.length;p+=4){const grain=Math.random()*34;m
 map2TextureContext.putImageData(map2TexturePixels,0,0);
 const map2GroundTexture=new THREE.CanvasTexture(map2TextureCanvas);map2GroundTexture.wrapS=map2GroundTexture.wrapT=THREE.RepeatWrapping;map2GroundTexture.repeat.set(22,22);map2GroundTexture.colorSpace=THREE.SRGBColorSpace;
 const map2Ground=new THREE.Mesh(map2GroundGeometry,new THREE.MeshStandardMaterial({map:map2GroundTexture,vertexColors:true,roughness:1,side:THREE.DoubleSide}));
-map2Ground.receiveShadow=true;map2Ground.visible=true;map2World.add(map2Ground); // Stable Map 2 foundation; separate assets will be placed on top.
+map2Ground.receiveShadow=true;map2Ground.visible=true;map2World.add(map2Ground); // Stable Map 2 foundation; scanned rock surface overlays the center area.
+const rockySurfaceLoader=new GLTFLoader();
+rockySurfaceLoader.setMeshoptDecoder(MeshoptDecoder);
+rockySurfaceLoader.load(rockySurfaceUrl,(gltf)=>{
+ const rockySurface=gltf.scene;
+ rockySurface.updateMatrixWorld(true);
+ const sourceBounds=new THREE.Box3().setFromObject(rockySurface);
+ const sourceSize=sourceBounds.getSize(new THREE.Vector3());
+ const sourceCenter=sourceBounds.getCenter(new THREE.Vector3());
+ const horizontalSpan=Math.max(sourceSize.x,sourceSize.z);
+ if(!Number.isFinite(horizontalSpan)||horizontalSpan<=0){
+  console.error('Rocky Surface 1 has invalid ground dimensions.');
+  return;
+ }
+ // Preserve the scan proportions and fit it as a broad, walkable rocky clearing.
+ const fitScale=100/horizontalSpan;
+ rockySurface.scale.setScalar(fitScale);
+ rockySurface.position.set(-sourceCenter.x*fitScale,map2HeightAt(0,0)-sourceBounds.min.y*fitScale,-sourceCenter.z*fitScale);
+ rockySurface.traverse(object=>{
+  if(!object.isMesh)return;
+  object.castShadow=true;
+  object.receiveShadow=true;
+  if(object.material){
+   const mats=Array.isArray(object.material)?object.material:[object.material];
+   mats.forEach(material=>{if("roughness" in material)material.roughness=Math.max(material.roughness??0.8,.82);});
+  }
+ });
+ rockySurface.name='SKA_MAP_02_ROCKY_SURFACE_1';
+ map2World.add(rockySurface);
+ rockySurface.updateMatrixWorld(true);
+ map2ImportedTerrain=rockySurface;
+ console.info('Rocky Surface 1 loaded for Map 2.',{sourceSize:sourceSize.toArray(),fitScale});
+},undefined,error=>console.error('Rocky Surface 1 failed to load:',error));
 const map2TrailPoints=[];
 for(let i=0;i<=24;i++){
  const z=220-i*18;
@@ -1017,7 +1050,16 @@ const map2Trail=new THREE.Mesh(map2PathGeometry,new THREE.MeshStandardMaterial({
 map2Trail.receiveShadow=true;map2Trail.visible=false;map2World.add(map2Trail); // Hide old generated path.
 // Keep the path mesh and player ground height aligned with the terrain.
 function map2SurfaceHeightAt(x,z,referenceY=null){
- // Match player feet and jump landing to the exact elevation used by Map 2 ground.
+ // Use the scanned mesh's real surface where it exists; retain procedural terrain elsewhere.
+ if(map2ImportedTerrain){
+  map2ImportedTerrain.updateMatrixWorld(true);
+  map2TerrainRaycaster.set(new THREE.Vector3(x,1000,z),new THREE.Vector3(0,-1,0));
+  const hits=map2TerrainRaycaster.intersectObject(map2ImportedTerrain,true);
+  if(hits.length){
+   const surfaceY=hits[0].point.y;
+   if(referenceY===null||Math.abs(surfaceY-referenceY)<18)return surfaceY;
+  }
+ }
  return map2HeightAt(x,z);
 }
 const map2Bark=new THREE.MeshStandardMaterial({color:0x493426,roughness:1});
@@ -1135,7 +1177,7 @@ const lobbyPanels={
  profile:["PLAYER PROFILE",'<div class="l-modal-row"><b>SKA PLAYER</b><br>Level 01 · Rookie<br>Local single-player profile</div>'],
  friends:["FRIENDS",'<div class="l-modal-row">No online friends are connected. This build currently supports single-player free roam only.</div>'],
  team:["TEAM",'<div class="l-modal-row">Team matchmaking is not connected yet. Start Solo Adventure to explore the city.</div>'],
- credits:["CREDITS",'<div class="l-modal-row">Credits: 0<br>No paid currency or in-game purchases are enabled.</div>'],
+ credits:["CREDITS",'<div class="l-modal-row">Credits: 0<br>No paid currency or in-game purchases are enabled.</div><div class="l-modal-row">Rocky Surface 1 — Created by Paul (paul3uk), Sketchfab. Used under CC BY attribution license.</div>'],
  settings:["SETTINGS",'<div class="l-modal-row">Display: Full-screen game view<br>Use the fullscreen icon in-game to enter landscape mode. Phone rotation may also require Auto-rotate.</div>'],
  events:["CITY ACTIVITIES",'<div class="l-modal-row"><b>City Explorer</b><br>Explore the streets, buildings and parked vehicles in free roam.</div><div class="l-modal-row"><b>Solo Adventure</b><br>Single-player city exploration is available now.</div>'],
  missions:["CITY MISSIONS",'<div class="l-modal-row">Explore the city district.</div><div class="l-modal-row">Find a parked vehicle and try the driving controls.</div>'],
