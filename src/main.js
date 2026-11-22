@@ -1070,7 +1070,7 @@ function map2SurfaceHeightAt(x,z,referenceY=null){
  // Use the scanned mesh's real surface where it exists; retain procedural terrain elsewhere.
  if(map2ImportedTerrain){
   map2ImportedTerrain.updateMatrixWorld(true);
-  map2TerrainRaycaster.set(new THREE.Vector3(x,1000,z),new THREE.Vector3(0,-1,0));
+  map2TerrainRaycaster.set(new THREE.Vector3(x+MAP2_OFFSET_X,1000,z),new THREE.Vector3(0,-1,0));
   const hits=map2TerrainRaycaster.intersectObject(map2ImportedTerrain,true);
   if(hits.length){
    const surfaceY=hits[0].point.y;
