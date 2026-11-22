@@ -938,16 +938,21 @@ americanRoadLoader.load(americanRoadUrl,(gltf)=>{
  roadModel.updateMatrixWorld(true);
  let bounds=new THREE.Box3().setFromObject(roadModel);
  const size=bounds.getSize(new THREE.Vector3());
- // Orient its long axis along Map 1's north-south road (Z).
- if(size.x>size.z)roadModel.rotation.y=Math.PI/2;
- roadModel.updateMatrixWorld(true);
- bounds=new THREE.Box3().setFromObject(roadModel);
- const dimensions=bounds.getSize(new THREE.Vector3());
- // Match the former Map 1 road footprint: 14 world units wide and 520 long.
- // Fit the GLB to those exact road dimensions instead of scaling length alone.
- if(dimensions.x>0&&dimensions.z>0){
-  roadModel.scale.x*=14/dimensions.x;
-  roadModel.scale.z*=520/dimensions.z;
+ // Fit along the GLB's ORIGINAL local axes before rotating it into the
+ // north-south direction. Scaling world X/Z after a 90-degree rotation
+ // swaps the road's width and length, which caused the previous fit to fail.
+ const longAxisX=size.x>=size.z;
+ const localLength=longAxisX?size.x:size.z;
+ const localWidth=longAxisX?size.z:size.x;
+ if(localLength>0&&localWidth>0){
+  if(longAxisX){
+   roadModel.scale.x*=520/localLength;
+   roadModel.scale.z*=14/localWidth;
+   roadModel.rotation.y=Math.PI/2;
+  }else{
+   roadModel.scale.z*=520/localLength;
+   roadModel.scale.x*=14/localWidth;
+  }
  }
  roadModel.updateMatrixWorld(true);
  bounds=new THREE.Box3().setFromObject(roadModel);
