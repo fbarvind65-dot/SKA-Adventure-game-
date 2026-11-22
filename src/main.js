@@ -120,8 +120,8 @@ function sphere(parent,r,material,x,y,z,sx=1,sy=1,sz=1){
 }
 
 // Large terrain with a subtle natural color variation.
-const ground= new THREE.Mesh(new THREE.PlaneGeometry(700,700,1,1),materials.grass);
-ground.rotation.x=-Math.PI/2; ground.position.y=-.08; ground.receiveShadow=true; scene.add(ground);
+const ground= new THREE.Mesh(new THREE.PlaneGeometry(1800,900,1,1),materials.grass);
+ground.rotation.x=-Math.PI/2; ground.position.set(550,-.08,0); ground.receiveShadow=true; scene.add(ground);
 
 // Main avenue, sidewalks, lane markings and side streets.
 function road(x,z,w,d){
@@ -952,8 +952,20 @@ let map2ImportedTerrain=null;
 const map2TerrainRaycaster=new THREE.Raycaster();
 const map2TerrainHeightCache=new Map();
 map2World.name='SKA_MAP_02_WILDLANDS';
-map2World.visible=false;
+// Map 2 is physically placed east of the city so both environments share one continuous world.
+const MAP2_OFFSET_X=650;
+map2World.position.set(MAP2_OFFSET_X,0,0);
+map2World.visible=true;
 scene.add(map2World);
+// A real connecting roadway leaves the city's east-side street and enters the wildlands.
+for(let i=0;i<76;i++){
+ const wx=58+i*2.5, localX=wx-MAP2_OFFSET_X;
+ const blend=THREE.MathUtils.smoothstep(wx,145,250);
+ const terrainY=map2HeightAt(localX,0);
+ const roadY=THREE.MathUtils.lerp(.02,terrainY+.12,blend);
+ box(scene,2.55,.14,13,materials.asphalt,wx,roadY,0,false);
+ if(i%5===0)box(scene,1.35,.025,.22,materials.line,wx,roadY+.085,0,false);
+}
 
 // Old combined forest-road GLB intentionally disabled: Map 2 is rebuilt from separate assets.
 // One shared height function drives the terrain mesh, trees, rocks, path and player.
@@ -1095,10 +1107,11 @@ for(let i=0;i<0;i++){ // The downloaded GLB already has trees; disable generated
 // Previous auto-scattered rock GLB placement disabled for the clean asset-by-asset rebuild.
 function setWorldMap(mapId){
  const wildlands=mapId==='map2';
- map1WorldObjects.forEach(object=>object.visible=!wildlands);
- map2World.visible=wildlands;
- vehicles.forEach(vehicle=>vehicle.visible=!wildlands);
- roadPickup.visible=!wildlands;
+ // Both maps remain loaded and visible; the lobby selection only chooses the starting region.
+ map1WorldObjects.forEach(object=>object.visible=true);
+ map2World.visible=true;
+ vehicles.forEach(vehicle=>vehicle.visible=true);
+ roadPickup.visible=true;
  scene.background=new THREE.Color(wildlands?0x91a69a:0x9eb8c8);
  scene.fog.color.set(wildlands?0x91a69a:0x9eb8c8);
  scene.fog.density=wildlands?.0035:.0028;
@@ -1229,7 +1242,7 @@ lobbyScreen.querySelector('#ska-lobby-play').addEventListener('click',async()=>{
  scene.background=new THREE.Color(0x9eb8c8);
  lobbyStageBase.visible=false; lobbyStageRing.visible=false;
  vehicles[0].position.copy(lobbyVehicleOriginal);
- player.position.set(0,activeMap==='map2'?map2SurfaceHeightAt(0,8,map2HeightAt(0,8)):0,activeMap==='map2'?8:18);
+ player.position.set(activeMap==='map2'?MAP2_OFFSET_X:0,activeMap==='map2'?map2SurfaceHeightAt(0,8,map2HeightAt(0,8)):0,activeMap==='map2'?8:18);
  hudRoot.style.display='block'; hud.style.display='block';
  cameraYaw=0;cameraPitch=.24;cameraDistance=8.5;
  updateHudLayout();
@@ -1299,7 +1312,8 @@ if(pickupLabel.style.display==='block'){const p=roadPickup.position.clone();p.y+
  if(jumpActive&&!isDriving){
   player.position.y+=jumpVelocity*dt;
   jumpVelocity-=15*dt;
-  const landingHeight=map2World.visible?map2SurfaceHeightAt(player.position.x,player.position.z):0;
+  const inWildlands=player.position.x>MAP2_OFFSET_X-400;
+  const landingHeight=inWildlands?map2SurfaceHeightAt(player.position.x-MAP2_OFFSET_X,player.position.z):0;
   if(player.position.y<=landingHeight){player.position.y=landingHeight;jumpVelocity=0;jumpActive=false;}
  }
  // Clear last frame's prone overlay before the animation mixer advances.
@@ -1414,7 +1428,7 @@ if(pickupLabel.style.display==='block'){const p=roadPickup.position.clone();p.y+
   // away from the camera; joystick down always moves toward the camera.
   const worldX=(x*Math.cos(cameraYaw))+(y*Math.sin(cameraYaw));
   const worldZ=-(x*Math.sin(cameraYaw))+(y*Math.cos(cameraYaw));
-  const nextX=THREE.MathUtils.clamp(player.position.x+worldX*speed*dt,-390,390);
+  const nextX=THREE.MathUtils.clamp(player.position.x+worldX*speed*dt,-390,1050);
   const nextZ=THREE.MathUtils.clamp(player.position.z+worldZ*speed*dt,-390,390);
   const playerRadius=.62;
   let blockedX=false,blockedZ=false;
@@ -1451,7 +1465,7 @@ if(pickupLabel.style.display==='block'){const p=roadPickup.position.clone();p.y+
  }
    // Keep the character's feet on the Map 2 terrain and raised dirt path.
   if(map2World.visible&&!isDriving){
-   const floorHeight=map2SurfaceHeightAt(player.position.x,player.position.z,player.position.y);
+   const floorHeight=map2SurfaceHeightAt(player.position.x-MAP2_OFFSET_X,player.position.z,player.position.y);
    if(!jumpActive)player.position.y=floorHeight;
    else if(player.position.y<floorHeight){player.position.y=floorHeight;jumpVelocity=0;jumpActive=false;}
   }
@@ -1488,13 +1502,13 @@ if(pickupLabel.style.display==='block'){const p=roadPickup.position.clone();p.y+
    const t=sample/21;
    const sampleX=lookTarget.x+sightX*t;
    const sampleZ=lookTarget.z+sightZ*t;
-   const terrainY=map2HeightAt(sampleX,sampleZ)+.8;
+   const terrainY=sampleX>MAP2_OFFSET_X-400?map2HeightAt(sampleX-MAP2_OFFSET_X,sampleZ)+.8:-.05;
    const sightY=lookTarget.y+(safeCameraY-lookTarget.y)*t;
    if(sightY<terrainY){
     safeCameraY=Math.max(safeCameraY,lookTarget.y+(terrainY-lookTarget.y)/t);
    }
   }
-  camera.position.y=Math.max(safeCameraY,map2HeightAt(camera.position.x,camera.position.z)+1.25);
+  if(camera.position.x>MAP2_OFFSET_X-400)camera.position.y=Math.max(safeCameraY,map2HeightAt(camera.position.x-MAP2_OFFSET_X,camera.position.z)+1.25);
  }
  camera.lookAt(lookTarget);
  renderer.render(scene,camera);
