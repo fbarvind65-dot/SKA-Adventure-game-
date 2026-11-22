@@ -925,7 +925,23 @@ const hud=document.createElement('div');
 hud.style.cssText='position:fixed;top:max(14px,env(safe-area-inset-top));left:max(14px,env(safe-area-inset-left));z-index:4;color:#fff;text-shadow:0 2px 5px #000;background:#15232bd9;border:1px solid #ffffff45;border-radius:12px;padding:10px 13px;font-size:clamp(12px,2.5vw,14px);letter-spacing:.3px;backdrop-filter:blur(8px);pointer-events:none';
 hud.innerHTML='<strong style="font-size:17px;letter-spacing:1.4px">SKA ADVENTURE</strong><div style="margin-top:5px;color:#d6e2e7">OPEN WORLD · CITY DISTRICT</div>';
 app.appendChild(hud);
-// Removed the on-screen joystick/run/camera instruction text.
+// Remove only the obsolete movement instruction label; keep the actual joystick and buttons.
+function removeMovementInstructionLabel(root=document.body){
+ const matchesInstruction=value=>{
+  const text=(value||'').replace(/\\s+/g,' ').trim().toLowerCase();
+  return text.includes('joystick')&&/\\bmove\\b/.test(text)&&/\\brun\\b/.test(text);
+ };
+ for(const element of Array.from(root.querySelectorAll('*'))){
+  if(!element.isConnected||element===document.body||element===document.documentElement)continue;
+  if(element.closest('#ska-joystick,button,#ska-lobby'))continue;
+  if(!matchesInstruction(element.textContent))continue;
+  const childAlreadyMatches=Array.from(element.children).some(child=>matchesInstruction(child.textContent));
+  if(!childAlreadyMatches)element.remove();
+ }
+}
+removeMovementInstructionLabel();
+const movementInstructionObserver=new MutationObserver(()=>removeMovementInstructionLabel());
+movementInstructionObserver.observe(document.body,{childList:true,subtree:true});
 
 
 /* Map 2: separate wildlands world. Map 1 objects are preserved and toggled, not rebuilt. */
@@ -1414,12 +1430,25 @@ if(pickupLabel.style.display==='block'){const p=roadPickup.position.clone();p.y+
   player.position.z+Math.cos(cameraYaw)*horizontalDistance
  );
  camera.position.lerp(desiredCamera,1-Math.exp(-4*dt));
- // Keep the Map 2 camera above the actual terrain surface, even on steep slopes.
- if(map2World.visible){
-  const cameraGround=map2HeightAt(camera.position.x,camera.position.z);
-  camera.position.y=Math.max(camera.position.y,cameraGround+1.25);
- }
  lookTarget.set(player.position.x,player.position.y+(firstPerson?1.55:1.25),player.position.z);
+ // Keep the whole camera sight line above Map 2 terrain, not just the camera itself.
+ // This prevents a nearby mountain ridge from cutting through the view when looking down.
+ if(map2World.visible){
+  let safeCameraY=camera.position.y;
+  const sightX=camera.position.x-lookTarget.x;
+  const sightZ=camera.position.z-lookTarget.z;
+  for(let sample=1;sample<=20;sample++){
+   const t=sample/21;
+   const sampleX=lookTarget.x+sightX*t;
+   const sampleZ=lookTarget.z+sightZ*t;
+   const terrainY=map2HeightAt(sampleX,sampleZ)+.8;
+   const sightY=lookTarget.y+(safeCameraY-lookTarget.y)*t;
+   if(sightY<terrainY){
+    safeCameraY=Math.max(safeCameraY,lookTarget.y+(terrainY-lookTarget.y)/t);
+   }
+  }
+  camera.position.y=Math.max(safeCameraY,map2HeightAt(camera.position.x,camera.position.z)+1.25);
+ }
  camera.lookAt(lookTarget);
  renderer.render(scene,camera);
 }
