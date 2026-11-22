@@ -1005,8 +1005,8 @@ const map2Trail=new THREE.Mesh(map2PathGeometry,new THREE.MeshStandardMaterial({
 map2Trail.receiveShadow=true;map2Trail.visible=false;map2World.add(map2Trail); // Hide old generated path.
 // Keep the path mesh and player ground height aligned with the terrain.
 function map2SurfaceHeightAt(x,z,referenceY=null){
- // Stable flat foundation while individually sourced environment assets are added.
- return 0;
+ // Match player feet and jump landing to the exact elevation used by Map 2 ground.
+ return map2HeightAt(x,z);
 }
 const map2Bark=new THREE.MeshStandardMaterial({color:0x493426,roughness:1});
 const map2LeafMaterials=[0x263d25,0x304b2d,0x3b552f,0x4a6238,0x35472a].map(color=>new THREE.MeshStandardMaterial({color,roughness:.96}));
