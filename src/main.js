@@ -1042,16 +1042,23 @@ map2Trail.receiveShadow=true;map2Trail.visible=false;map2World.add(map2Trail); /
 // Keep the path mesh and player ground height aligned with the terrain.
 function map2SurfaceHeightAt(x,z){
  if(map2ImportedTerrain){
-  const cell=1.25;
+  // Smaller samples avoid the stair-step/jitter caused by the old 1.25-unit grid.
+  const cell=.35;
   const sampleX=Math.round(x/cell)*cell,sampleZ=Math.round(z/cell)*cell;
   const key=sampleX+','+sampleZ;
   if(map2TerrainHeightCache.has(key))return map2TerrainHeightCache.get(key);
   map2ImportedTerrain.updateMatrixWorld(true);
   const terrainBox=new THREE.Box3().setFromObject(map2ImportedTerrain);
-  map2TerrainRaycaster.set(new THREE.Vector3(sampleX,terrainBox.max.y+30,sampleZ),new THREE.Vector3(0,-1,0));
+  map2TerrainRaycaster.set(new THREE.Vector3(sampleX,terrainBox.max.y+15,sampleZ),new THREE.Vector3(0,-1,0));
   const hits=map2TerrainRaycaster.intersectObject(map2ImportedTerrain,true);
-  if(hits.length){
-   const groundY=hits.reduce((lowest,hit)=>Math.min(lowest,hit.point.y),Infinity)+.04;
+  // Ray hits are distance-sorted. Select the first upward-facing walkable surface,
+  // not the lowest underside triangle (which made the player sink into hills).
+  for(const hit of hits){
+   if(!hit.face)continue;
+   const normal=hit.face.normal.clone().transformDirection(hit.object.matrixWorld);
+   if(normal.y<.48)continue;
+   const groundY=hit.point.y+.045;
+   if(map2TerrainHeightCache.size>12000)map2TerrainHeightCache.clear();
    map2TerrainHeightCache.set(key,groundY);
    return groundY;
   }
@@ -1467,8 +1474,17 @@ if(pickupLabel.style.display==='block'){const p=roadPickup.position.clone();p.y+
    // Keep the character's feet on the Map 2 terrain and raised dirt path.
   if(map2World.visible&&!isDriving){
    const floorHeight=map2SurfaceHeightAt(player.position.x,player.position.z);
-   if(!jumpActive)player.position.y=floorHeight;
-   else if(player.position.y<floorHeight){player.position.y=floorHeight;jumpVelocity=0;jumpActive=false;}
+   if(!jumpActive){
+    // Stop horizontal movement into abrupt cliff faces instead of snapping the
+    // character through a large elevation change in one frame.
+    const verticalStep=floorHeight-player.position.y;
+    if(moving&&verticalStep>.42){
+     player.position.x-=worldX*speed*dt;
+     player.position.z-=worldZ*speed*dt;
+    }else{
+     player.position.y=floorHeight;
+    }
+   }else if(player.position.y<floorHeight){player.position.y=floorHeight;jumpVelocity=0;jumpActive=false;}
   }
 // Fallback punch pose is applied to the visible imported character rig, not the hidden placeholder arms.
  if(punchTimer>0){
