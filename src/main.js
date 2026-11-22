@@ -1045,19 +1045,24 @@ map2RockDracoLoader.setDecoderPath('https://www.gstatic.com/draco/v1/decoders/')
 map2RockLoader.setDRACOLoader(map2RockDracoLoader);
 map2RockLoader.load(rockModelUrl,gltf=>{
  const rockSource=gltf.scene;
- rockSource.traverse(object=>{if(object.isMesh){object.castShadow=true;object.receiveShadow=true;}});
+ rockSource.updateMatrixWorld(true);
+ rockSource.traverse(object=>{if(object.isMesh){object.visible=true;object.castShadow=true;object.receiveShadow=true;object.frustumCulled=false;}});
  const rockBounds=new THREE.Box3().setFromObject(rockSource);
  const rockSize=rockBounds.getSize(new THREE.Vector3());
  const rockScale=3.2/Math.max(rockSize.y,.01);
- // Put several large rocks near the Map 2 spawn so the uploaded asset is immediately visible.
- const rockSpots=[[-9,16,2.2],[-15,29,2.0],[18,34,2.3],[28,55,2.5],[-35,82,1.8],[38,108,2.5],[-54,-72,2.8],[62,-95,1.9]];
+ // The default camera stands behind the player and looks toward negative Z.
+ // Keep the first rocks ahead of the spawn and just outside the dirt trail.
+ const rockSpots=[[6,-1,1.65],[-7,-5,1.55],[10,-17,1.8],[-11,-24,1.7],[18,-38,2.0],[-19,-47,1.9]];
  for(const [x,z,size] of rockSpots){
   const rock=rockSource.clone(true);rock.scale.setScalar(rockScale*size);
   rock.position.set(x,map2HeightAt(x,z)-rockBounds.min.y*rockScale*size-.06,z);
-  rock.rotation.y=(x*13+z*7)*.017;map2World.add(rock);
+  rock.rotation.y=(x*13+z*7)*.017;
+  rock.traverse(object=>{if(object.isMesh){object.visible=true;object.frustumCulled=false;}});
+  map2World.add(rock);
  }
- console.info('Map 2 rock asset loaded:',rockSpots.length,'placed copies');
-},undefined,error=>console.error('Map 2 rock GLB failed to load:',error));
+ console.info('Map 2 Rock 1 Montebu loaded:',rockSpots.length,'copies',rockSize.toArray());
+ toast('Rock 1 loaded · 6 placed in front of spawn');
+},undefined,error=>{console.error('Map 2 rock GLB failed to load:',error);toast('Rock 1 failed to load: '+(error?.message||'GLB error'));});
 function setWorldMap(mapId){
  const wildlands=mapId==='map2';
  map1WorldObjects.forEach(object=>object.visible=!wildlands);
