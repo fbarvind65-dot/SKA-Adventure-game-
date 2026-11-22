@@ -962,7 +962,7 @@ function map2HeightAt(x,z){
  const hillB=15*Math.exp(-((x+105)**2+(z-95)**2)/3600);
  return Math.sin(x*.018)*1.7+Math.cos(z*.021)*1.8+ridge*10+hillA+hillB-3.8;
 }
-const map2GroundGeometry=new THREE.PlaneGeometry(520,520,240,240);
+const map2GroundGeometry=new THREE.PlaneGeometry(800,800,360,360);
 const map2Positions=map2GroundGeometry.attributes.position;
 const map2Colors=[];
 for(let i=0;i<map2Positions.count;i++){
@@ -980,7 +980,7 @@ const map2TextureContext=map2TextureCanvas.getContext('2d');
 const map2TexturePixels=map2TextureContext.createImageData(512,512);
 for(let p=0;p<map2TexturePixels.data.length;p+=4){const grain=Math.random()*34;map2TexturePixels.data[p]=94+grain;map2TexturePixels.data[p+1]=123+grain;map2TexturePixels.data[p+2]=68+grain*.55;map2TexturePixels.data[p+3]=255;}
 map2TextureContext.putImageData(map2TexturePixels,0,0);
-const map2GroundTexture=new THREE.CanvasTexture(map2TextureCanvas);map2GroundTexture.wrapS=map2GroundTexture.wrapT=THREE.RepeatWrapping;map2GroundTexture.repeat.set(14,14);map2GroundTexture.colorSpace=THREE.SRGBColorSpace;
+const map2GroundTexture=new THREE.CanvasTexture(map2TextureCanvas);map2GroundTexture.wrapS=map2GroundTexture.wrapT=THREE.RepeatWrapping;map2GroundTexture.repeat.set(22,22);map2GroundTexture.colorSpace=THREE.SRGBColorSpace;
 const map2Ground=new THREE.Mesh(map2GroundGeometry,new THREE.MeshStandardMaterial({map:map2GroundTexture,vertexColors:true,roughness:1,side:THREE.DoubleSide}));
 map2Ground.receiveShadow=true;map2Ground.visible=true;map2World.add(map2Ground); // Stable Map 2 foundation; separate assets will be placed on top.
 const map2TrailPoints=[];
@@ -1367,8 +1367,8 @@ if(pickupLabel.style.display==='block'){const p=roadPickup.position.clone();p.y+
   // away from the camera; joystick down always moves toward the camera.
   const worldX=(x*Math.cos(cameraYaw))+(y*Math.sin(cameraYaw));
   const worldZ=-(x*Math.sin(cameraYaw))+(y*Math.cos(cameraYaw));
-  const nextX=THREE.MathUtils.clamp(player.position.x+worldX*speed*dt,-95,95);
-  const nextZ=THREE.MathUtils.clamp(player.position.z+worldZ*speed*dt,-245,245);
+  const nextX=THREE.MathUtils.clamp(player.position.x+worldX*speed*dt,-390,390);
+  const nextZ=THREE.MathUtils.clamp(player.position.z+worldZ*speed*dt,-390,390);
   const playerRadius=.62;
   let blockedX=false,blockedZ=false;
   for(const vehicle of vehicles){
