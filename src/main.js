@@ -965,7 +965,7 @@ const map2TexturePixels=map2TextureContext.createImageData(512,512);
 for(let p=0;p<map2TexturePixels.data.length;p+=4){const grain=Math.random()*34;map2TexturePixels.data[p]=94+grain;map2TexturePixels.data[p+1]=123+grain;map2TexturePixels.data[p+2]=68+grain*.55;map2TexturePixels.data[p+3]=255;}
 map2TextureContext.putImageData(map2TexturePixels,0,0);
 const map2GroundTexture=new THREE.CanvasTexture(map2TextureCanvas);map2GroundTexture.wrapS=map2GroundTexture.wrapT=THREE.RepeatWrapping;map2GroundTexture.repeat.set(14,14);map2GroundTexture.colorSpace=THREE.SRGBColorSpace;
-const map2Ground=new THREE.Mesh(map2GroundGeometry,new THREE.MeshStandardMaterial({map:map2GroundTexture,vertexColors:true,roughness:1}));
+const map2Ground=new THREE.Mesh(map2GroundGeometry,new THREE.MeshStandardMaterial({map:map2GroundTexture,vertexColors:true,roughness:1,side:THREE.DoubleSide}));
 map2Ground.receiveShadow=true;map2Ground.visible=true;map2World.add(map2Ground); // Stable Map 2 foundation; separate assets will be placed on top.
 const map2TrailPoints=[];
 for(let i=0;i<=24;i++){
@@ -1041,12 +1041,12 @@ function setWorldMap(mapId){
  scene.fog.density=wildlands?.0035:.0028;
  mapPanel.querySelector('div').textContent=wildlands?'WILDLANDS · MAP 02':'CITY DISTRICT · MAP 01';
  hud.querySelector('div').textContent=wildlands?'WILDLANDS · FOREST & HILLS':'OPEN WORLD · CITY DISTRICT';
- hint.style.display=wildlands?'none':(gameStarted?'block':'none');
+ // On-screen movement/camera instruction label removed.
 }
 
 /* Full-screen SKA lobby with a central 3D avatar and full game-home menus. */
 let gameStarted=false;
-hudRoot.style.display='none'; hud.style.display='none'; hint.style.display='none';
+hudRoot.style.display='none'; hud.style.display='none'; // Instruction label removed.
 const lobbyVehicleOriginal=vehicles[0].position.clone();
 vehicles[0].position.set(-4.1,0,17.2);
 const lobbyOriginalSceneBackground=scene.background;
@@ -1098,7 +1098,7 @@ lobbyReturnButton.addEventListener('click',async()=>{
  gameStarted=false;
  setWorldMap('map1');
  lobbyReturnButton.style.display='none';
- hudRoot.style.display='none';hud.style.display='none';hint.style.display='none';
+ hudRoot.style.display='none';hud.style.display='none';
  lobbyStageBase.visible=true;lobbyStageRing.visible=true;
  vehicles[0].position.set(-4.1,0,17.2);
  player.position.set(0,0,18);
@@ -1160,7 +1160,7 @@ lobbyScreen.querySelector('#ska-lobby-play').addEventListener('click',async()=>{
  setWorldMap(activeMap);
  gameStarted=true;
  lobbyReturnButton.style.display='block';
- hudRoot.style.display='block';hud.style.display='block';hint.style.display='block';
+ hudRoot.style.display='block';hud.style.display='block';
  try{await requestLandscape();}catch(e){console.info('Fullscreen unavailable',e)}
  lobbyScreen.remove();
  scene.background=new THREE.Color(0x9eb8c8);
@@ -1190,7 +1190,7 @@ window.addEventListener('pointermove',e=>{
  const dx=e.clientX-lastPointerX,dy=e.clientY-lastPointerY;
  lastPointerX=e.clientX;lastPointerY=e.clientY;
  cameraYaw-=dx*.008;
- cameraPitch=THREE.MathUtils.clamp(cameraPitch+dy*.006,.08,1.05);
+ cameraPitch=THREE.MathUtils.clamp(cameraPitch+dy*.006,.32,1.05);
 });
 function stopCameraDrag(e){if(cameraPointer===e.pointerId)cameraPointer=null}
 window.addEventListener('pointerup',stopCameraDrag);
@@ -1414,6 +1414,11 @@ if(pickupLabel.style.display==='block'){const p=roadPickup.position.clone();p.y+
   player.position.z+Math.cos(cameraYaw)*horizontalDistance
  );
  camera.position.lerp(desiredCamera,1-Math.exp(-4*dt));
+ // Keep the Map 2 camera above the actual terrain surface, even on steep slopes.
+ if(map2World.visible){
+  const cameraGround=map2HeightAt(camera.position.x,camera.position.z);
+  camera.position.y=Math.max(camera.position.y,cameraGround+1.25);
+ }
  lookTarget.set(player.position.x,player.position.y+(firstPerson?1.55:1.25),player.position.z);
  camera.lookAt(lookTarget);
  renderer.render(scene,camera);
