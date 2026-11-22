@@ -1294,6 +1294,7 @@ function animate(){
  if(!gameStarted){x=0;y=0;}
  const joystickStrength=THREE.MathUtils.clamp(Math.hypot(x,y),0,1);
  const moving=joystickStrength>.035;
+ const terrainMoveStartX=player.position.x,terrainMoveStartZ=player.position.z;
 
 // Roadside pickup collection and screen-space prompt.
 if(roadPickup.visible){
@@ -1479,8 +1480,8 @@ if(pickupLabel.style.display==='block'){const p=roadPickup.position.clone();p.y+
     // character through a large elevation change in one frame.
     const verticalStep=floorHeight-player.position.y;
     if(moving&&verticalStep>.42){
-     player.position.x-=worldX*speed*dt;
-     player.position.z-=worldZ*speed*dt;
+     player.position.x=terrainMoveStartX;
+     player.position.z=terrainMoveStartZ;
     }else{
      player.position.y=floorHeight;
     }
