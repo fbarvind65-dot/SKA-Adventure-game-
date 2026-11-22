@@ -973,7 +973,7 @@ function makeRiverRibbon(width,yOffset,material,name){
   const centerX=420+Math.sin(z*.0024)*24+Math.sin(z*.006)*7;
   for(const side of [-1,1]){
    const x=centerX+side*width*.5;
-   const y=(width>30?.12:.22)+yOffset;
+   const y=(width>30?-1.15:-.95)+yOffset;
    vertices.push(x,y,z);
   }
   if(i<segments){
@@ -1461,12 +1461,12 @@ if(pickupLabel.style.display==='block'){const p=roadPickup.position.clone();p.y+
    activeVehicle.position.z=THREE.MathUtils.clamp(activeVehicle.position.z+driveZ*driveSpeed*dt,-245,245);
    player.position.copy(activeVehicle.position);
   }else{
-  const walkSpeed=.35+joystickStrength*1.85;
+  const walkSpeed=.45+joystickStrength*2.15;
   // Crouch movement stays controlled at every joystick position; sprint input
   // must not turn a crouched walk into a fast, sliding upright-style run.
   const speed=playerStance==='crouch'
    ?THREE.MathUtils.lerp(.55,1.35,joystickStrength)
-   :THREE.MathUtils.lerp(walkSpeed,4.6,runBlend)*(keys.shift?1.05:1)*stanceSpeed;
+   :THREE.MathUtils.lerp(walkSpeed,5.35,runBlend)*(keys.shift?1.12:1)*stanceSpeed;
   // Match the crouch animation cycle to the slower in-world movement.
   if(playerStance==='crouch'&&crouchWalkAction){
    crouchWalkAction.setEffectiveTimeScale(THREE.MathUtils.clamp(speed/1.1,.4,1.05));
