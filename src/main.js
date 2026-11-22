@@ -121,8 +121,9 @@ function sphere(parent,r,material,x,y,z,sx=1,sy=1,sz=1){
 }
 
 // Large terrain with a subtle natural color variation.
-const ground= new THREE.Mesh(new THREE.PlaneGeometry(1800,900,1,1),materials.grass);
-ground.rotation.x=-Math.PI/2; ground.position.set(550,-.08,0); ground.receiveShadow=true; scene.add(ground);
+// Map 1 ground ends at the Map 2 western edge (x=250), so it cannot cover Map 2 or its river.
+const ground= new THREE.Mesh(new THREE.PlaneGeometry(600,900,1,1),materials.grass);
+ground.rotation.x=-Math.PI/2; ground.position.set(-50,-.08,0); ground.receiveShadow=true; scene.add(ground);
 
 // Main avenue, sidewalks, lane markings and side streets.
 function road(x,z,w,d){
