@@ -957,6 +957,37 @@ const MAP2_OFFSET_X=650;
 map2World.position.set(MAP2_OFFSET_X,0,0);
 map2World.visible=true;
 scene.add(map2World);
+
+// One continuous, broad river runs across the entire joined map and beyond its edges.
+const riverWaterMaterial=new THREE.MeshStandardMaterial({
+ color:0x287fba,roughness:.22,metalness:.08,
+ transparent:true,opacity:.91,side:THREE.DoubleSide
+});
+const riverBankMaterial=new THREE.MeshStandardMaterial({color:0x77664a,roughness:1,side:THREE.DoubleSide});
+function makeRiverRibbon(width,yOffset,material,name){
+ const vertices=[],indices=[];
+ const segments=360;
+ for(let i=0;i<=segments;i++){
+  const z=-1250+i*(2500/segments);
+  const centerX=420+Math.sin(z*.0024)*24+Math.sin(z*.006)*7;
+  for(const side of [-1,1]){
+   const x=centerX+side*width*.5;
+   const y=(width>30?.12:.22)+yOffset;
+   vertices.push(x,y,z);
+  }
+  if(i<segments){
+   const a=i*2;indices.push(a,a+1,a+2,a+1,a+3,a+2);
+  }
+ }
+ const geometry=new THREE.BufferGeometry();
+ geometry.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));
+ geometry.setIndex(indices);geometry.computeVertexNormals();
+ const ribbon=new THREE.Mesh(geometry,material);
+ ribbon.name=name;ribbon.receiveShadow=true;scene.add(ribbon);
+ return ribbon;
+}
+makeRiverRibbon(48,0,riverBankMaterial,'SKA_LONG_RIVER_BANKS');
+makeRiverRibbon(34,0,riverWaterMaterial,'SKA_LONG_RIVER_WATER');
 // A real connecting roadway leaves the city's east-side street and enters the wildlands.
 for(let i=0;i<76;i++){
  const wx=58+i*2.5, localX=wx-MAP2_OFFSET_X;
@@ -977,7 +1008,13 @@ function map2HeightAt(x,z){
  const hillB=27*Math.exp(-((x+105)**2+(z-95)**2)/4600);
  const rolling=Math.sin(x*.014+Math.sin(z*.009)*1.8)*4.2+Math.cos(z*.017+Math.sin(x*.012)*1.5)*3.6;
  const brokenRock=Math.sin(x*.061+z*.027)*1.15+Math.cos(z*.073-x*.019)*.9+Math.sin((x-z)*.11)*.42;
- return rolling+brokenRock+ridge*19+hillA+hillB-5.5;
+ const naturalHeight=rolling+brokenRock+ridge*19+hillA+hillB-5.5;
+ // Carve a long natural river channel into Map 2's terrain, aligned to the river mesh.
+ const worldX=x+MAP2_OFFSET_X;
+ const riverCenterX=420+Math.sin(z*.0024)*24+Math.sin(z*.006)*7;
+ const riverDistance=Math.abs(worldX-riverCenterX);
+ const riverCut=1-THREE.MathUtils.smoothstep(riverDistance,18,48);
+ return THREE.MathUtils.lerp(naturalHeight,-1.35,riverCut);
 }
 const map2GroundGeometry=new THREE.PlaneGeometry(800,800,360,360);
 const map2Positions=map2GroundGeometry.attributes.position;
