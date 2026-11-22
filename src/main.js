@@ -959,12 +959,12 @@ americanRoadLoader.load(americanRoadUrl,(gltf)=>{
  const roadCenter=bounds.getCenter(new THREE.Vector3());
  // Match Map 1's original road: centerline X=0, Z=0, and its north-south (Z) direction.
  // The former road had 0-degree world yaw and sat on the ground plane at Y=-0.08.
- const MAP1_ROAD_X=0, MAP1_ROAD_Z=0, MAP1_GROUND_Y=-0.08;
+ const MAP1_ROAD_X=0, MAP1_ROAD_Z=0, MAP1_ROAD_BOTTOM_Y=-0.06;
  roadModel.rotation.y=longAxisX?Math.PI/2:0;
  roadModel.updateMatrixWorld(true);
  bounds=new THREE.Box3().setFromObject(roadModel);
  const alignedRoadCenter=bounds.getCenter(new THREE.Vector3());
- roadModel.position.set(MAP1_ROAD_X-alignedRoadCenter.x,MAP1_GROUND_Y-bounds.min.y,MAP1_ROAD_Z-alignedRoadCenter.z);
+ roadModel.position.set(MAP1_ROAD_X-alignedRoadCenter.x,MAP1_ROAD_BOTTOM_Y-bounds.min.y,MAP1_ROAD_Z-alignedRoadCenter.z);
  roadModel.traverse(object=>{
   if(object.isMesh){object.castShadow=true;object.receiveShadow=true;}
  });
