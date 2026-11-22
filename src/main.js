@@ -983,7 +983,7 @@ for(let i=0;i<map2PathSamples.length;i++){
  for(const side of [-1,1]){
   const px=point.x+sideX*map2PathHalfWidth*side;
   const pz=point.z+sideZ*map2PathHalfWidth*side;
-  map2PathVertices.push(px,map2HeightAt(px,pz)+.035,pz);
+  map2PathVertices.push(px,map2HeightAt(px,pz)+.32,pz);
   map2PathUvs.push(i/(map2PathSamples.length-1)*18,(side+1)*.5);
  }
  if(i<map2PathSamples.length-1){
