@@ -125,23 +125,7 @@ function sphere(parent,r,material,x,y,z,sx=1,sy=1,sz=1){
 const ground= new THREE.Mesh(new THREE.PlaneGeometry(600,900,1,1),materials.grass);
 ground.rotation.x=-Math.PI/2; ground.position.set(-50,-.08,0); ground.receiveShadow=true; scene.add(ground);
 
-// Main avenue, sidewalks, lane markings and side streets.
-function road(x,z,w,d){
- box(scene,w,.12,d,materials.asphalt,x,.0,z,false);
-}
-road(0,0,13,520);
-road(-48,0,9,520); road(48,0,9,520);
-road(0,-58,180,10); road(0,58,180,10);
-for(let z=-245;z<250;z+=12){
- box(scene,.16,.025,5,materials.line,0,.075,z,false);
-}
-for(const side of [-1,1]){
- box(scene,2.3,.18,520,materials.sidewalk,side*7.65,.12,0,false);
- box(scene,2.3,.18,520,materials.sidewalk,side*10.5,.12,0,false);
- for(let z=-240;z<250;z+=5){
-  box(scene,2.3,.19,.12,materials.concrete,side*7.65,.22,z,false);
- }
-}
+// Map 1's old procedural asphalt, side streets and lane markings are replaced by the American Road GLB.
 
 // Town blocks: distinct buildings with real facades, rooflines, windows and doors.
 const windowMat=materials.glass;
@@ -969,17 +953,18 @@ americanRoadLoader.load(americanRoadUrl,(gltf)=>{
  roadModel.updateMatrixWorld(true);
  let bounds=new THREE.Box3().setFromObject(roadModel);
  const size=bounds.getSize(new THREE.Vector3());
- // Road assets may be authored along either horizontal axis.
- if(size.z>size.x)roadModel.rotation.y=Math.PI/2;
+ // Orient its long axis along Map 1's north-south road (Z).
+ if(size.x>size.z)roadModel.rotation.y=Math.PI/2;
  roadModel.updateMatrixWorld(true);
  bounds=new THREE.Box3().setFromObject(roadModel);
  const dimensions=bounds.getSize(new THREE.Vector3());
  const roadLength=Math.max(dimensions.x,dimensions.z);
- if(roadLength>0)roadModel.scale.setScalar(190/roadLength);
+ if(roadLength>0)roadModel.scale.setScalar(520/roadLength);
  roadModel.updateMatrixWorld(true);
  bounds=new THREE.Box3().setFromObject(roadModel);
- // Put the road's lowest point at ground level, regardless of its GLB origin.
- roadModel.position.set(153,0.08-bounds.min.y,0);
+ const roadCenter=bounds.getCenter(new THREE.Vector3());
+ // Center the GLB over Map 1's former road and align its bottom with ground.
+ roadModel.position.set(-roadCenter.x,0.08-bounds.min.y,-roadCenter.z);
  roadModel.traverse(object=>{
   if(object.isMesh){object.castShadow=true;object.receiveShadow=true;}
  });
