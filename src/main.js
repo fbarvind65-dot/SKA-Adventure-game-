@@ -1040,30 +1040,37 @@ map2PathGeometry.computeVertexNormals();
 const map2Trail=new THREE.Mesh(map2PathGeometry,new THREE.MeshStandardMaterial({color:0x80664a,roughness:1,side:THREE.DoubleSide}));
 map2Trail.receiveShadow=true;map2Trail.visible=false;map2World.add(map2Trail); // Hide old generated path.
 // Keep the path mesh and player ground height aligned with the terrain.
-function map2SurfaceHeightAt(x,z){
+function map2SurfaceHeightAt(x,z,referenceY=null){
  if(map2ImportedTerrain){
-  // Smaller samples avoid the stair-step/jitter caused by the old 1.25-unit grid.
-  const cell=.35;
+  // Fine sampling reduces height steps. Include the player's current height in
+  // the cache key so a nearby tree canopy cannot reuse a previously cached top.
+  const cell=.18;
   const sampleX=Math.round(x/cell)*cell,sampleZ=Math.round(z/cell)*cell;
-  const key=sampleX+','+sampleZ;
+  const referenceKey=referenceY===null?'none':Math.round(referenceY*2)/2;
+  const key=sampleX+','+sampleZ+','+referenceKey;
   if(map2TerrainHeightCache.has(key))return map2TerrainHeightCache.get(key);
   map2ImportedTerrain.updateMatrixWorld(true);
   const terrainBox=new THREE.Box3().setFromObject(map2ImportedTerrain);
   map2TerrainRaycaster.set(new THREE.Vector3(sampleX,terrainBox.max.y+15,sampleZ),new THREE.Vector3(0,-1,0));
   const hits=map2TerrainRaycaster.intersectObject(map2ImportedTerrain,true);
-  // Ray hits are distance-sorted. Select the first upward-facing walkable surface,
-  // not the lowest underside triangle (which made the player sink into hills).
+  let bestHit=null,bestDifference=Infinity;
   for(const hit of hits){
    if(!hit.face)continue;
    const normal=hit.face.normal.clone().transformDirection(hit.object.matrixWorld);
-   if(normal.y<.48)continue;
-   const groundY=hit.point.y+.045;
-   if(map2TerrainHeightCache.size>12000)map2TerrainHeightCache.clear();
+   if(normal.y<.55)continue;
+   // Ignore elevated tree/branch surfaces while the character is grounded.
+   const difference=referenceY===null?0:Math.abs(hit.point.y-referenceY);
+   if(referenceY!==null&&hit.point.y>referenceY+1.25)continue;
+   if(difference<bestDifference){bestHit=hit;bestDifference=difference;}
+  }
+  if(bestHit){
+   const groundY=bestHit.point.y+.045;
+   if(map2TerrainHeightCache.size>18000)map2TerrainHeightCache.clear();
    map2TerrainHeightCache.set(key,groundY);
    return groundY;
   }
  }
- return map2HeightAt(x,z)+.035;
+ return referenceY===null?map2HeightAt(x,z)+.035:referenceY;
 }
 const map2Bark=new THREE.MeshStandardMaterial({color:0x493426,roughness:1});
 const map2LeafMaterials=[0x263d25,0x304b2d,0x3b552f,0x4a6238,0x35472a].map(color=>new THREE.MeshStandardMaterial({color,roughness:.96}));
@@ -1443,6 +1450,8 @@ if(pickupLabel.style.display==='block'){const p=roadPickup.position.clone();p.y+
   const playerRadius=.62;
   let blockedX=false,blockedZ=false;
   for(const vehicle of vehicles){
+   // Map 1 vehicles are hidden in Map 2; they must not block Wildlands movement.
+   if(!vehicle.visible)continue;
    const dx=nextX-vehicle.position.x;
    const dz=nextZ-vehicle.position.z;
    const insideX=Math.abs(dx)<1.35+playerRadius;
@@ -1473,7 +1482,7 @@ if(pickupLabel.style.display==='block'){const p=roadPickup.position.clone();p.y+
  }
    // Keep the character's feet on the Map 2 terrain and raised dirt path.
   if(map2World.visible&&!isDriving){
-   const floorHeight=map2SurfaceHeightAt(player.position.x,player.position.z);
+   const floorHeight=map2SurfaceHeightAt(player.position.x,player.position.z,player.position.y);
    if(!jumpActive)player.position.y=floorHeight;
    else if(player.position.y<floorHeight){player.position.y=floorHeight;jumpVelocity=0;jumpActive=false;}
   }
