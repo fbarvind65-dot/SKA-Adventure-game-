@@ -1010,7 +1010,7 @@ function map2SurfaceHeightAt(x,z){
   const distSq=(x-px)*(x-px)+(z-pz)*(z-pz);
   if(distSq<nearestSq)nearestSq=distSq;
  }
- return map2HeightAt(x,z)+(nearestSq<=(map2PathHalfWidth-.12)**2?0.035:0.035);
+ return map2HeightAt(x,z)+.035;
 }
 const map2Bark=new THREE.MeshStandardMaterial({color:0x493426,roughness:1});
 const map2LeafMaterials=[0x263d25,0x304b2d,0x3b552f,0x4a6238,0x35472a].map(color=>new THREE.MeshStandardMaterial({color,roughness:.96}));
