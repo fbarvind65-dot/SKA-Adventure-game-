@@ -936,6 +936,9 @@ app.appendChild(hint);
 /* Map 2: separate wildlands world. Map 1 objects are preserved and toggled, not rebuilt. */
 const map1WorldObjects=scene.children.filter(object=>object!==player&&!object.isLight&&!vehicles.includes(object)&&object!==roadPickup);
 const map2World=new THREE.Group();
+let map2ImportedTerrain=null;
+const map2TerrainRaycaster=new THREE.Raycaster();
+const map2TerrainHeightCache=new Map();
 map2World.name='SKA_MAP_02_WILDLANDS';
 map2World.visible=false;
 scene.add(map2World);
@@ -968,6 +971,8 @@ map2TerrainLoader.load(terrainModelUrl,gltf=>{
  terrainScene.position.z-=(terrainBounds.min.z+terrainBounds.max.z)*.5;
  terrainScene.position.y+=map2HeightAt(0,0)-terrainBounds.min.y;
  map2World.add(terrainScene);
+ map2ImportedTerrain=terrainScene;
+ map2TerrainHeightCache.clear();
  console.info('Map 2 forest-road GLB loaded:',sourceSize.toArray());
  toast('Forest terrain loaded in Map 2');
 },undefined,error=>{
@@ -1001,7 +1006,7 @@ for(let p=0;p<map2TexturePixels.data.length;p+=4){const grain=Math.random()*34;m
 map2TextureContext.putImageData(map2TexturePixels,0,0);
 const map2GroundTexture=new THREE.CanvasTexture(map2TextureCanvas);map2GroundTexture.wrapS=map2GroundTexture.wrapT=THREE.RepeatWrapping;map2GroundTexture.repeat.set(14,14);map2GroundTexture.colorSpace=THREE.SRGBColorSpace;
 const map2Ground=new THREE.Mesh(map2GroundGeometry,new THREE.MeshStandardMaterial({map:map2GroundTexture,vertexColors:true,roughness:1}));
-map2Ground.receiveShadow=true;map2World.add(map2Ground);
+map2Ground.receiveShadow=true;map2Ground.visible=false;map2World.add(map2Ground); // Hide old generated ground below the downloaded GLB.
 const map2TrailPoints=[];
 for(let i=0;i<=24;i++){
  const z=220-i*18;
@@ -1033,18 +1038,23 @@ map2PathGeometry.setAttribute('uv',new THREE.Float32BufferAttribute(map2PathUvs,
 map2PathGeometry.setIndex(map2PathIndices);
 map2PathGeometry.computeVertexNormals();
 const map2Trail=new THREE.Mesh(map2PathGeometry,new THREE.MeshStandardMaterial({color:0x80664a,roughness:1,side:THREE.DoubleSide}));
-map2Trail.receiveShadow=true;map2World.add(map2Trail);
+map2Trail.receiveShadow=true;map2Trail.visible=false;map2World.add(map2Trail); // Hide old generated path.
 // Keep the path mesh and player ground height aligned with the terrain.
 function map2SurfaceHeightAt(x,z){
- let nearestSq=Infinity;
- for(let i=0;i<map2PathSamples.length-1;i++){
-  const a=map2PathSamples[i],b=map2PathSamples[i+1];
-  const dx=b.x-a.x,dz=b.z-a.z;
-  const lenSq=dx*dx+dz*dz;
-  const t=lenSq>0?THREE.MathUtils.clamp(((x-a.x)*dx+(z-a.z)*dz)/lenSq,0,1):0;
-  const px=a.x+dx*t,pz=a.z+dz*t;
-  const distSq=(x-px)*(x-px)+(z-pz)*(z-pz);
-  if(distSq<nearestSq)nearestSq=distSq;
+ if(map2ImportedTerrain){
+  const cell=1.25;
+  const sampleX=Math.round(x/cell)*cell,sampleZ=Math.round(z/cell)*cell;
+  const key=sampleX+','+sampleZ;
+  if(map2TerrainHeightCache.has(key))return map2TerrainHeightCache.get(key);
+  map2ImportedTerrain.updateMatrixWorld(true);
+  const terrainBox=new THREE.Box3().setFromObject(map2ImportedTerrain);
+  map2TerrainRaycaster.set(new THREE.Vector3(sampleX,terrainBox.max.y+30,sampleZ),new THREE.Vector3(0,-1,0));
+  const hits=map2TerrainRaycaster.intersectObject(map2ImportedTerrain,true);
+  if(hits.length){
+   const groundY=hits.reduce((lowest,hit)=>Math.min(lowest,hit.point.y),Infinity)+.04;
+   map2TerrainHeightCache.set(key,groundY);
+   return groundY;
+  }
  }
  return map2HeightAt(x,z)+.035;
 }
@@ -1067,7 +1077,7 @@ function map2Tree(x,z,scale=1){
   crown.rotation.set(cluster*.21,angle,cluster*.13);crown.castShadow=true;treeGroup.add(crown);
  }
 }
-for(let i=0;i<118;i++){
+for(let i=0;i<0;i++){ // The downloaded GLB already has trees; disable generated trees.
  const angle=i*2.399963,rad=42+((i*37)%190);
  const x=Math.cos(angle)*rad,z=Math.sin(angle)*rad;
  if(Math.abs(x-Math.sin((220-z)/18*.24)*20+5)<13)continue;
