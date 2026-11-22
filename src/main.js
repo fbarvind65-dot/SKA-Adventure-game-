@@ -1279,7 +1279,7 @@ lobbyScreen.querySelector('#ska-lobby-play').addEventListener('click',async()=>{
  scene.background=new THREE.Color(0x9eb8c8);
  lobbyStageBase.visible=false; lobbyStageRing.visible=false;
  vehicles[0].position.copy(lobbyVehicleOriginal);
- player.position.set(170,0,0); // Start at the Map 1–Map 2 connecting road.
+ player.position.set(150,0,0); // Start on the Map 1–Map 2 connecting road at ground level.
  hudRoot.style.display='block'; hud.style.display='block';
  cameraYaw=0;cameraPitch=.24;cameraDistance=8.5;
  updateHudLayout();
@@ -1502,7 +1502,14 @@ if(pickupLabel.style.display==='block'){const p=roadPickup.position.clone();p.y+
  }
    // Keep the character's feet on the Map 2 terrain and raised dirt path.
   if(map2World.visible&&!isDriving){
-   const floorHeight=map2SurfaceHeightAt(player.position.x-MAP2_OFFSET_X,player.position.z,player.position.y);
+   const worldX=player.position.x;
+   let floorHeight=0; // Map 1 and the first part of the connecting road sit at ground level.
+   if(worldX>145){
+    const blend=THREE.MathUtils.smoothstep(worldX,145,250);
+    const roadTerrainY=map2HeightAt(worldX-MAP2_OFFSET_X,0);
+    floorHeight=THREE.MathUtils.lerp(.02,roadTerrainY+.12,blend);
+    if(worldX>=250)floorHeight=map2SurfaceHeightAt(worldX-MAP2_OFFSET_X,player.position.z,player.position.y);
+   }
    if(!jumpActive)player.position.y=floorHeight;
    else if(player.position.y<floorHeight){player.position.y=floorHeight;jumpVelocity=0;jumpActive=false;}
   }
