@@ -974,7 +974,7 @@ function makeRiverRibbon(width,yOffset,material,name){
   const centerX=420+Math.sin(z*.0024)*24+Math.sin(z*.006)*7;
   for(const side of [-1,1]){
    const x=centerX+side*width*.5;
-   const y=(width>30?-1.15:-.95)+yOffset;
+   // Keep the river clearly above the carved Map 2 channel so the water is visible on the ground.\n  const y=(width>30?-.95:-.75)+yOffset;
    vertices.push(x,y,z);
   }
   if(i<segments){
