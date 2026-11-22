@@ -928,8 +928,8 @@ app.appendChild(hud);
 // Remove only the obsolete movement instruction label; keep the actual joystick and buttons.
 function removeMovementInstructionLabel(root=document.body){
  const matchesInstruction=value=>{
-  const text=(value||'').replace(/\\s+/g,' ').trim().toLowerCase();
-  return text.includes('joystick')&&/\\bmove\\b/.test(text)&&/\\brun\\b/.test(text);
+  const text=(value||'').replace(/\s+/g,' ').trim().toLowerCase();
+  return text.includes('joystick')&&/\bmove\b/.test(text)&&/\brun\b/.test(text);
  };
  for(const element of Array.from(root.querySelectorAll('*'))){
   if(!element.isConnected||element===document.body||element===document.documentElement)continue;
