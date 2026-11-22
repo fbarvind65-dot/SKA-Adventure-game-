@@ -179,7 +179,7 @@ for(let z=-220;z<=220;z+=32){
  }
 }
 
-// Street lamps and trees create scale and depth.
+// Street lamps create scale and depth.
 const lampMetal=mat(0x343a3b,.42,.65);
 const lampGlow=new THREE.MeshStandardMaterial({color:0xffe7b5,emissive:0xffd28a,emissiveIntensity:1.5});
 for(let z=-225;z<230;z+=28){
@@ -188,21 +188,6 @@ for(let z=-225;z<230;z+=28){
   cylinder(scene,.09,.12,5.8,lampMetal,x,2.9,z,10);
   const arm=box(scene,.12,.12,1.25,lampMetal,x-side*.55,5.65,z,false); arm.rotation.y=side*.08;
   sphere(scene,.19,lampGlow,x-side*1.05,5.55,z,1.35,.55,.65);
- }
-}
-function tree(x,z,scale=1){
- const g=new THREE.Group(); g.position.set(x,0,z); g.scale.setScalar(scale); scene.add(g);
- cylinder(g,.22,.34,3.2,materials.bark,0,1.6,0,9);
- for(let i=0;i<5;i++){
-  const a=i*Math.PI*2/5;
-  sphere(g,1.35, i%2?materials.leaf:materials.leaf2,Math.cos(a)*.65,3.65+(i%2)*.3,Math.sin(a)*.65,1,1.1,1);
- }
- sphere(g,1.35,materials.leaf,0,4.35,0,1.1,1.05,1.1);
-}
-for(let z=-230;z<235;z+=17){
- for(const side of [-1,1]){
-  tree(side*(14.5+(Math.sin(z)*.5)),z,0.85+(Math.abs(Math.sin(z*.13))*.35));
-  if(Math.abs(z%64)>12) tree(side*(58+Math.sin(z*.1)*8),z+5,.9);
  }
 }
 
@@ -1087,31 +1072,6 @@ function map2SurfaceHeightAt(x,z,referenceY=null){
   }
  }
  return map2HeightAt(x,z);
-}
-const map2Bark=new THREE.MeshStandardMaterial({color:0x493426,roughness:1});
-const map2LeafMaterials=[0x263d25,0x304b2d,0x3b552f,0x4a6238,0x35472a].map(color=>new THREE.MeshStandardMaterial({color,roughness:.96}));
-const map2CrownGeometry=new THREE.SphereGeometry(2.1,12,10);
-function map2Tree(x,z,scale=1){
- const treeGroup=new THREE.Group();treeGroup.position.set(x,map2HeightAt(x,z)-.12,z);treeGroup.scale.setScalar(scale);map2World.add(treeGroup);
- const trunk=new THREE.Mesh(new THREE.CylinderGeometry(.19,.42,6.2,10),map2Bark);trunk.position.y=3.1;trunk.castShadow=true;treeGroup.add(trunk);
- for(let branch=0;branch<3;branch++){
-  const limb=new THREE.Mesh(new THREE.CylinderGeometry(.09,.16,2.7,7),map2Bark);
-  limb.position.set(Math.sin(branch*2.1)*.6,3.8+branch*.35,Math.cos(branch*2.1)*.5);
-  limb.rotation.z=(branch-1)*.48;limb.rotation.x=(branch-1)*.28;limb.castShadow=true;treeGroup.add(limb);
- }
- for(let cluster=0;cluster<7;cluster++){
-  const crown=new THREE.Mesh(map2CrownGeometry,map2LeafMaterials[(Math.abs(Math.floor(x*3+z*2))+cluster)%map2LeafMaterials.length]);
-  const angle=cluster*2.39996,rad=cluster===0?0:1.1+(cluster%3)*.22;
-  crown.position.set(Math.cos(angle)*rad,5.8+(cluster%4)*.72,Math.sin(angle)*rad);
-  crown.scale.set(.82+(cluster%3)*.16,1.02+(cluster%2)*.12,.85+(cluster%4)*.08);
-  crown.rotation.set(cluster*.21,angle,cluster*.13);crown.castShadow=true;treeGroup.add(crown);
- }
-}
-for(let i=0;i<0;i++){ // The downloaded GLB already has trees; disable generated trees.
- const angle=i*2.399963,rad=42+((i*37)%190);
- const x=Math.cos(angle)*rad,z=Math.sin(angle)*rad;
- if(Math.abs(x-Math.sin((220-z)/18*.24)*20+5)<13)continue;
- map2Tree(x,z,.8+((i*13)%48)/100);
 }
 // Previous auto-scattered rock GLB placement disabled for the clean asset-by-asset rebuild.
 function setWorldMap(mapId){
