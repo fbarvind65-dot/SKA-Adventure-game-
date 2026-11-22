@@ -1053,10 +1053,10 @@ map2RockLoader.load(rockModelUrl,gltf=>{
  // The default camera stands behind the player and looks toward negative Z.
  // Keep the first rocks ahead of the spawn and just outside the dirt trail.
  // Map 2 player spawn is (x=0,z=8): keep boulders within the visible start area.
- const rockSpots=[[3.2,8,1.25],[-3.2,9,1.2],[4.5,3,1.35],[-4.5,2,1.3],[2.8,14,1.45],[-2.8,15,1.4]];
+ const rockSpots=[[7,-10,1.25],[-7,-24,1.2],[9,-40,1.35],[-9,-55,1.3],[7,-70,1.45],[-7,-85,1.4]];
  for(const [x,z,size] of rockSpots){
   const rock=rockSource.clone(true);rock.scale.setScalar(rockScale*size);
-  rock.position.set(x,map2SurfaceHeightAt(x,z)-rockBounds.min.y*rockScale*size+25,z);
+  rock.position.set(x,map2SurfaceHeightAt(x,z)-rockBounds.min.y*rockScale*size,z);
   rock.rotation.y=(x*13+z*7)*.017;
   rock.traverse(object=>{if(object.isMesh){object.visible=true;object.frustumCulled=false;}});
   map2World.add(rock);
