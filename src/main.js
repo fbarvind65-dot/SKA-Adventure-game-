@@ -1050,7 +1050,8 @@ map2RockLoader.load(rockModelUrl,gltf=>{
  const rockBounds=new THREE.Box3().setFromObject(rockSource);
  const rockSize=rockBounds.getSize(new THREE.Vector3());
  const rockScale=3.2/Math.max(rockSize.y,.01);
- const rockSpots=[[-17,26,1.5],[21,44,2.2],[-35,82,1.8],[38,108,2.5],[12,-35,1.4],[-54,-72,2.8],[62,-95,1.9],[0,155,3.1]];
+ // Put several large rocks near the Map 2 spawn so the uploaded asset is immediately visible.
+ const rockSpots=[[-9,16,2.2],[-15,29,2.0],[18,34,2.3],[28,55,2.5],[-35,82,1.8],[38,108,2.5],[-54,-72,2.8],[62,-95,1.9]];
  for(const [x,z,size] of rockSpots){
   const rock=rockSource.clone(true);rock.scale.setScalar(rockScale*size);
   rock.position.set(x,map2HeightAt(x,z)-rockBounds.min.y*rockScale*size-.06,z);
