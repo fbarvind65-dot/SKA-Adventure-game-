@@ -1260,7 +1260,7 @@ lobbyScreen.querySelector('#ska-lobby-play').addEventListener('click',async()=>{
  scene.background=new THREE.Color(0x9eb8c8);
  lobbyStageBase.visible=false; lobbyStageRing.visible=false;
  vehicles[0].position.copy(lobbyVehicleOriginal);
- player.position.set(0,activeMap==='map2'?map2SurfaceHeightAt(0,8):0,activeMap==='map2'?8:18);
+ player.position.set(0,activeMap==='map2'?map2SurfaceHeightAt(0,8,map2HeightAt(0,8)):0,activeMap==='map2'?8:18);
  hudRoot.style.display='block'; hud.style.display='block';
  cameraYaw=0;cameraPitch=.24;cameraDistance=8.5;
  updateHudLayout();
