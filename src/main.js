@@ -967,6 +967,19 @@ const riverWaterMaterial=new THREE.MeshStandardMaterial({
  depthWrite:true
 });
 const riverBankMaterial=new THREE.MeshStandardMaterial({color:0x77664a,roughness:1,side:THREE.DoubleSide});
+// Animated, gentle travelling ripples on the river water.
+riverWaterMaterial.onBeforeCompile=(shader)=>{
+ shader.uniforms.uRiverTime={value:0};
+ shader.vertexShader=shader.vertexShader.replace(
+  '#include <common>',
+  '#include <common>\nuniform float uRiverTime;'
+ ).replace(
+  '#include <begin_vertex>',
+  '#include <begin_vertex>\ntransformed.y += sin(position.z*0.075+uRiverTime*2.0)*0.055 + sin(position.z*0.13-uRiverTime*1.35)*0.025;'
+ );
+ riverWaterMaterial.userData.riverShader=shader;
+};
+riverWaterMaterial.customProgramCacheKey=()=> 'ska-river-ripples-v1';
 function riverCenter(z){
  return 420+Math.sin(z*.0024)*24+Math.sin(z*.006)*7+Math.sin(z*.012)*2.5;
 }
@@ -1340,6 +1353,9 @@ renderer.domElement.addEventListener('wheel',e=>{
 function animate(){
  requestAnimationFrame(animate);
  const dt=Math.min(clock.getDelta(),.04);
+ if(riverWaterMaterial.userData.riverShader){
+  riverWaterMaterial.userData.riverShader.uniforms.uRiverTime.value=clock.elapsedTime;
+ }
  let x=moveX+(keys.d||keys.arrowright?1:0)-(keys.a||keys.arrowleft?1:0);
  let y=moveY+(keys.s||keys.arrowdown?1:0)-(keys.w||keys.arrowup?1:0);
  const length=Math.hypot(x,y); if(length>1){x/=length;y/=length}
