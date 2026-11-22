@@ -1351,7 +1351,7 @@ if(pickupLabel.style.display==='block'){const p=roadPickup.position.clone();p.y+
   // must not turn a crouched walk into a fast, sliding upright-style run.
   const speed=playerStance==='crouch'
    ?THREE.MathUtils.lerp(.55,1.35,joystickStrength)
-   :THREE.MathUtils.lerp(walkSpeed,4.2,runBlend)*(keys.shift?1.05:1)*stanceSpeed;
+   :THREE.MathUtils.lerp(walkSpeed,4.6,runBlend)*(keys.shift?1.05:1)*stanceSpeed;
   // Match the crouch animation cycle to the slower in-world movement.
   if(playerStance==='crouch'&&crouchWalkAction){
    crouchWalkAction.setEffectiveTimeScale(THREE.MathUtils.clamp(speed/1.1,.4,1.05));
