@@ -962,34 +962,39 @@ scene.add(map2World);
 
 // One continuous, broad river runs across the entire joined map and beyond its edges.
 const riverWaterMaterial=new THREE.MeshStandardMaterial({
- color:0x287fba,roughness:.22,metalness:.08,
- transparent:true,opacity:.91,side:THREE.DoubleSide
+ color:0x287fba,roughness:.32,metalness:.02,
+ transparent:false,opacity:1,side:THREE.DoubleSide,
+ depthWrite:true
 });
 const riverBankMaterial=new THREE.MeshStandardMaterial({color:0x77664a,roughness:1,side:THREE.DoubleSide});
-function makeRiverRibbon(width,yOffset,material,name){
+function riverCenter(z){
+ return 420+Math.sin(z*.0024)*24+Math.sin(z*.006)*7+Math.sin(z*.012)*2.5;
+}
+function makeRiverRibbon(width,y,material,name){
  const vertices=[],indices=[];
- const segments=360;
+ const segments=700;
  for(let i=0;i<=segments;i++){
   const z=-1250+i*(2500/segments);
-  const centerX=420+Math.sin(z*.0024)*24+Math.sin(z*.006)*7;
-  for(const side of [-1,1]){
-   const x=centerX+side*width*.5;
-   // Keep the river clearly above the carved Map 2 channel so the water is visible on the ground.\n  const y=(width>30?-.95:-.75)+yOffset;
-   vertices.push(x,y,z);
-  }
+  const centerX=riverCenter(z);
+  const widthScale=.84+.13*Math.sin(z*.0041)+.07*Math.sin(z*.0103);
+  const halfWidth=width*.5*widthScale;
+  vertices.push(centerX-halfWidth,y,z,centerX+halfWidth,y,z);
   if(i<segments){
-   const a=i*2;indices.push(a,a+1,a+2,a+1,a+3,a+2);
+   const a=i*2;
+   indices.push(a,a+2,a+1,a+1,a+2,a+3);
   }
  }
  const geometry=new THREE.BufferGeometry();
  geometry.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));
  geometry.setIndex(indices);geometry.computeVertexNormals();
  const ribbon=new THREE.Mesh(geometry,material);
- ribbon.name=name;ribbon.receiveShadow=true;scene.add(ribbon);
+ ribbon.name=name;ribbon.receiveShadow=false;ribbon.renderOrder=name.includes('WATER')?3:2;
+ scene.add(ribbon);
  return ribbon;
 }
-makeRiverRibbon(48,0,riverBankMaterial,'SKA_LONG_RIVER_BANKS');
-makeRiverRibbon(34,0,riverWaterMaterial,'SKA_LONG_RIVER_WATER');
+// Broad natural banks and a smooth water surface, separated vertically to prevent flicker.
+makeRiverRibbon(64,-1.29,riverBankMaterial,'SKA_LONG_RIVER_BANKS');
+makeRiverRibbon(46,-1.18,riverWaterMaterial,'SKA_LONG_RIVER_WATER');
 // Load the uploaded American Road GLB; normalize its bounds so it is not buried by its source origin.
 const americanRoadLoader=new GLTFLoader();
 americanRoadLoader.setMeshoptDecoder(MeshoptDecoder);
