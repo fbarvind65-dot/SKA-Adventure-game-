@@ -11,6 +11,7 @@ import crouchWalkAnimationUrl from './Walk_-_crouched_forwards.glb?url';
 import punchAnimationUrl from './Punch_-_cross_right_2.glb?url';
 import rockModelUrl from '../assets/rocks/rock_1_montebu (1).glb?url';
 import rockySurfaceUrl from '../assets/rocky_surface_1 (1).glb?url';
+import americanRoadUrl from '../assets/american_road (1).glb?url';
 
 const app = document.querySelector('#app');
 document.body.style.cssText = 'margin:0;overflow:hidden;background:#9bb8c7;font-family:Arial,sans-serif;overscroll-behavior:none;touch-action:none';
@@ -988,15 +989,31 @@ function makeRiverRibbon(width,yOffset,material,name){
 }
 makeRiverRibbon(48,0,riverBankMaterial,'SKA_LONG_RIVER_BANKS');
 makeRiverRibbon(34,0,riverWaterMaterial,'SKA_LONG_RIVER_WATER');
-// A real connecting roadway leaves the city's east-side street and enters the wildlands.
-for(let i=0;i<76;i++){
- const wx=58+i*2.5, localX=wx-MAP2_OFFSET_X;
- const blend=THREE.MathUtils.smoothstep(wx,145,250);
- const terrainY=map2HeightAt(localX,0);
- const roadY=THREE.MathUtils.lerp(.02,terrainY+.12,blend);
- box(scene,2.55,.14,13,materials.asphalt,wx,roadY,0,false);
- if(i%5===0)box(scene,1.35,.025,.22,materials.line,wx,roadY+.085,0,false);
-}
+// Load the uploaded American Road GLB; normalize its bounds so it is not buried by its source origin.
+const americanRoadLoader=new GLTFLoader();
+americanRoadLoader.setMeshoptDecoder(MeshoptDecoder);
+americanRoadLoader.load(americanRoadUrl,(gltf)=>{
+ const roadModel=gltf.scene;
+ roadModel.updateMatrixWorld(true);
+ let bounds=new THREE.Box3().setFromObject(roadModel);
+ const size=bounds.getSize(new THREE.Vector3());
+ // Road assets may be authored along either horizontal axis.
+ if(size.z>size.x)roadModel.rotation.y=Math.PI/2;
+ roadModel.updateMatrixWorld(true);
+ bounds=new THREE.Box3().setFromObject(roadModel);
+ const dimensions=bounds.getSize(new THREE.Vector3());
+ const roadLength=Math.max(dimensions.x,dimensions.z);
+ if(roadLength>0)roadModel.scale.setScalar(190/roadLength);
+ roadModel.updateMatrixWorld(true);
+ bounds=new THREE.Box3().setFromObject(roadModel);
+ // Put the road's lowest point at ground level, regardless of its GLB origin.
+ roadModel.position.set(153,0.08-bounds.min.y,0);
+ roadModel.traverse(object=>{
+  if(object.isMesh){object.castShadow=true;object.receiveShadow=true;}
+ });
+ roadModel.name='SKA_AMERICAN_ROAD';
+ scene.add(roadModel);
+},undefined,error=>console.error('American Road GLB failed to load:',error));
 
 // Old combined forest-road GLB intentionally disabled: Map 2 is rebuilt from separate assets.
 // One shared height function drives the terrain mesh, trees, rocks, path and player.
