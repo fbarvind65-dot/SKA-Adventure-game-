@@ -9,6 +9,7 @@ import sitStandBundleUrl from './Business_Female_02-rigged-animated.glb?url';
 import crouchWalkAnimationUrl from './Walk_-_crouched_forwards.glb?url';
 import punchAnimationUrl from './Punch_-_cross_right_2.glb?url';
 import rockModelUrl from '../assets/rocks/rock_1_montebu (1).glb?url';
+import lawnPatchModelUrl from '../assets/lawn-patch.glb?url';
 
 const app = document.querySelector('#app');
 document.body.style.cssText = 'margin:0;overflow:hidden;background:#9bb8c7;font-family:Arial,sans-serif;overscroll-behavior:none;touch-action:none';
@@ -117,10 +118,77 @@ function sphere(parent,r,material,x,y,z,sx=1,sy=1,sz=1){
  m.position.set(x,y,z); m.scale.set(sx,sy,sz); m.castShadow=true; parent.add(m); return m;
 }
 
-// Large terrain with a subtle natural color variation.
-// Map 1 ground ends at the Map 2 western edge (x=250), so it cannot cover Map 2 or its river.
-const ground= new THREE.Mesh(new THREE.PlaneGeometry(600,900,1,1),materials.grass);
-ground.rotation.x=-Math.PI/2; ground.position.set(-50,-.08,0); ground.receiveShadow=true; scene.add(ground);
+// Map 1 terrain is assembled from the uploaded 12 x 12 m lawn patch material.
+// The 600 x 900 m ground is exactly 50 columns x 75 rows and ends at x=250,
+// so these 3,750 tiles cannot cover Map 2 or its river.
+const groundTileSize=12;
+const groundTileColumns=50;
+const groundTileRows=75;
+const groundTileGeometry=new THREE.PlaneGeometry(groundTileSize,groundTileSize);
+groundTileGeometry.rotateX(-Math.PI/2);
+const ground=new THREE.InstancedMesh(
+ groundTileGeometry,
+ materials.grass,
+ groundTileColumns*groundTileRows
+);
+ground.instanceMatrix.setUsage(THREE.StaticDrawUsage);
+const groundTileDummy=new THREE.Object3D();
+const groundTileColor=new THREE.Color();
+let groundTileIndex=0;
+for(let row=0;row<groundTileRows;row++){
+ for(let column=0;column<groundTileColumns;column++){
+  const hash=(((column+1)*73856093)^((row+1)*19349663))>>>0;
+  groundTileDummy.position.set(
+   -350+groundTileSize*.5+column*groundTileSize,
+   -.08,
+   -450+groundTileSize*.5+row*groundTileSize
+  );
+  groundTileDummy.rotation.set(0,(hash&3)*(Math.PI*.5),0);
+  groundTileDummy.updateMatrix();
+  ground.setMatrixAt(groundTileIndex,groundTileDummy.matrix);
+  const shade=.96+((hash>>>2)%9)*.01;
+  groundTileColor.setRGB(shade,shade,shade);
+  ground.setColorAt(groundTileIndex,groundTileColor);
+  groundTileIndex++;
+ }
+}
+ground.instanceMatrix.needsUpdate=true;
+if(ground.instanceColor)ground.instanceColor.needsUpdate=true;
+ground.computeBoundingBox();
+ground.computeBoundingSphere();
+ground.receiveShadow=true;
+scene.add(ground);
+
+// Load the grass surface material from the real GLB once and reuse it across
+// all tiles. Instancing keeps the detailed ground lightweight on mobile.
+const lawnPatchLoader=new GLTFLoader();
+lawnPatchLoader.setMeshoptDecoder(MeshoptDecoder);
+lawnPatchLoader.load(lawnPatchModelUrl,(lawnPatchGltf)=>{
+ let lawnSurfaceMaterial=null;
+ lawnPatchGltf.scene.traverse((object)=>{
+  if(!object.isMesh||!object.material)return;
+  const candidates=Array.isArray(object.material)?object.material:[object.material];
+  const match=candidates.find(material=>material.name==='Mown lawn grass'&&material.map)
+   ||candidates.find(material=>material.map);
+  if(match)lawnSurfaceMaterial=match;
+ });
+ if(!lawnSurfaceMaterial){
+  console.warn('Lawn patch GLB loaded, but its textured grass surface was not found.');
+  return;
+ }
+ const tileMaterial=lawnSurfaceMaterial.clone();
+ tileMaterial.side=THREE.DoubleSide;
+ const maxAnisotropy=renderer.capabilities.getMaxAnisotropy();
+ if(tileMaterial.map)tileMaterial.map.anisotropy=Math.min(maxAnisotropy,8);
+ if(tileMaterial.normalMap)tileMaterial.normalMap.anisotropy=Math.min(maxAnisotropy,8);
+ tileMaterial.needsUpdate=true;
+ ground.material=tileMaterial;
+ lawnPatchGltf.scene.traverse((object)=>{
+  if(object.isMesh)object.geometry.dispose();
+ });
+},undefined,(error)=>{
+ console.error('Lawn patch GLB could not load; the existing grass fallback remains active.',error);
+});
 
 // Main avenue, sidewalks, lane markings and side streets.
 function road(x,z,w,d){
