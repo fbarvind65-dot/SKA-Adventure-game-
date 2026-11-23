@@ -215,84 +215,15 @@ for(let i=0;i<24;i++){
 
 // Detailed player rig, with articulated limbs and a grounded human silhouette.
 const player=new THREE.Group(); scene.add(player);
-const torso= new THREE.Group(); player.add(torso);
-const skin=materials.skin;
-const shirt=materials.shirt;
-const limbGeo=new THREE.CapsuleGeometry(.115,.48,5,10);
-function limb(parent,material,x,y,z){
- const m=new THREE.Mesh(limbGeo,material); m.position.set(x,y,z); m.castShadow=true; parent.add(m); return m;
-}
-const body= new THREE.Mesh(new THREE.CapsuleGeometry(.31,.64,8,16),shirt);
-body.position.y=1.28; body.castShadow=true; body.receiveShadow=true; torso.add(body);
-// Black hoodie details: hood, front pouch, seams and drawstrings.
-const hood=sphere(torso,.245,shirt,0,1.72,-.13,1.08,.92,.72);
-const hoodOpening=sphere(torso,.155,mat(0x090a0b),0,1.76,-.205,1,.9,.42);
-const pouch=box(torso,.39,.22,.075,mat(0x222426),0,1.12,.278);
-pouch.rotation.x=-.08;
-for(const side of [-1,1]){
- const cord=cylinder(torso,.012,.012,.24,mat(0xbdbbb4),side*.065,1.55,.29,7);
- cord.rotation.x=.12;
- sphere(torso,.018,mat(0xbdbbb4),side*.065,1.42,.29,.8,1.2,.8);
-}
-const logoCanvas=document.createElement('canvas');
-logoCanvas.width=512; logoCanvas.height=256;
-const logoCtx=logoCanvas.getContext('2d');
-logoCtx.clearRect(0,0,512,256);
-logoCtx.fillStyle='#f1f0e9'; logoCtx.textAlign='center';
-logoCtx.font='900 112px Arial'; logoCtx.fillText('SKA',256,125);
-logoCtx.font='bold 34px Arial'; logoCtx.fillText('ADVENTURE',256,174);
-const logoTexture=new THREE.CanvasTexture(logoCanvas);
-const logo=new THREE.Mesh(new THREE.PlaneGeometry(.34,.17),new THREE.MeshBasicMaterial({map:logoTexture,transparent:true,side:THREE.DoubleSide,depthWrite:false}));
-logo.position.set(0,1.42,.304); torso.add(logo);
-const neck=cylinder(torso,.09,.1,.2,skin,0,1.79,0,12);
-const head=sphere(torso,.235,skin,0,2.03,0,1,1.13,.95);
-// Facial structure and features, facing the character's forward (+Z) direction.
-const eyeWhite=new THREE.MeshStandardMaterial({color:0xe9e4dc,roughness:.42});
-const iris=mat(0x382b22,.35), hairMat=mat(0x211c19,.86), browMat=mat(0x30251f,.9);
-for(const side of [-1,1]){
- sphere(torso,.045,skin,side*.235,2.02,0,.72,1.15,.82); // ears
- sphere(torso,.032,eyeWhite,side*.088,2.075,.199,1,.8,.48);
- sphere(torso,.017,iris,side*.088,2.075,.224,1,1,.55);
- sphere(torso,.009,materials.black,side*.088,2.075,.233,1,1,.5);
- const brow=sphere(torso,.047,browMat,side*.088,2.132,.194,1,.22,.42);
- brow.rotation.z=side*.1;
-}
-const nose=sphere(torso,.052,skin,0,2.005,.225,.62,.8,.78);
-const mouth=sphere(torso,.043,mat(0x684238,.8),0,1.94,.207,.8,.18,.25);
-const chin=sphere(torso,.105,skin,0,1.89,.105,.9,.48,.75);
-// Hair cap and separate side locks instead of a smooth featureless ball.
-const hair= new THREE.Mesh(new THREE.SphereGeometry(.24,24,16),hairMat);
-hair.position.set(0,2.145,-.015); hair.scale.set(1, .57, 1); torso.add(hair);
-// Layered swept-up hair locks for a less generic silhouette.
-for(let i=0;i<7;i++){
- const lock=sphere(torso,.085,hairMat,(i-3)*.052,2.235+Math.sin(i*.7)*.035,.025,.72,1.45,.72);
- lock.rotation.z=-.28-(i*.035);
-}
-for(const side of [-1,1]){
- sphere(torso,.09,hairMat,side*.19,2.08,.005,.65,1.1,.85);
-}
+// Procedural cartoon meshes removed. Keep only animation pivot groups for legacy pose logic.
+const torso=new THREE.Group();
+torso.visible=false;
+player.add(torso);
+const leftLeg=new THREE.Group();leftLeg.position.set(-.14,.92,0);torso.add(leftLeg);
+const rightLeg=new THREE.Group();rightLeg.position.set(.14,.92,0);torso.add(rightLeg);
+const leftArm=new THREE.Group();leftArm.position.set(-.37,1.53,0);torso.add(leftArm);
+const rightArm=new THREE.Group();rightArm.position.set(.37,1.53,0);torso.add(rightArm);
 
-const pants=materials.pants;
-const leftLeg=new THREE.Group(); leftLeg.position.set(-.14,.92,0); torso.add(leftLeg);
-const rightLeg=new THREE.Group(); rightLeg.position.set(.14,.92,0); torso.add(rightLeg);
-limb(leftLeg,pants,0,-.34,0); box(leftLeg,.25,.16,.46,materials.shoe,0,-.67,.12);
-limb(rightLeg,pants,0,-.34,0); box(rightLeg,.25,.16,.46,materials.shoe,0,-.67,.12);
-for(const leg of [leftLeg,rightLeg]){
- box(leg,.255,.045,.47,mat(0xb8b9b5),0,-.745,.13,false);
-}
-const leftArm=new THREE.Group(); leftArm.position.set(-.37,1.53,0); torso.add(leftArm);
-const rightArm=new THREE.Group(); rightArm.position.set(.37,1.53,0); torso.add(rightArm);
-limb(leftArm,shirt,0,-.27,0); limb(leftArm,skin,0,-.66,0);
-limb(rightArm,shirt,0,-.27,0); limb(rightArm,skin,0,-.66,0);
-for(const arm of [leftArm,rightArm]){
- sphere(arm,.105,skin,0,-.83,.005,1,.85,.8);
- for(let finger=0;finger<4;finger++){
-  const fx=(finger-1.5)*.045;
-  const digit=limb(arm,skin,fx,-.91,.025);
-  digit.scale.set(.25,.48,.25);
- }
-}
-player.position.set(0,0,18);
 
 // Visible held weapon attached to the character's right hand.
 const heldWeapon=new THREE.Group();heldWeapon.visible=false;rightArm.add(heldWeapon);
