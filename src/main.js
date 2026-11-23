@@ -144,9 +144,6 @@ for(const side of [-1,1]){
 const lampGlow=new THREE.MeshStandardMaterial({color:0xffe7b5,emissive:0xffd28a,emissiveIntensity:1.5});
 
 // Park strips and distant low hills.
-for(const side of [-1,1]){
- const park=box(scene,16,.04,120,mat(0x71865b),side*77,-.01,0,false);
-}
 for(let i=0;i<24;i++){
  const hill=sphere(scene,1,mat(i%2?0x74886b:0x839078),-290+i*25,-8,-260,18+Math.random()*12,8+Math.random()*8,20);
  hill.castShadow=false;
