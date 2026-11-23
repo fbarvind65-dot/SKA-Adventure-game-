@@ -1012,6 +1012,7 @@ rockySurfaceLoader.load(rockySurfaceUrl,(gltf)=>{
  map2World.add(rockySurface);
  rockySurface.updateMatrixWorld(true);
  map2ImportedTerrain=rockySurface;
+ refreshMap2TrailOnTerrain();
  console.info('Rocky Surface 1 loaded for Map 2.',{sourceSize:sourceSize.toArray(),fitScale});
 },undefined,error=>console.error('Rocky Surface 1 failed to load:',error));
 const map2TrailPoints=[];
@@ -1022,7 +1023,7 @@ for(let i=0;i<=24;i++){
 }
 const map2TrailCurve=new THREE.CatmullRomCurve3(map2TrailPoints);
 const map2PathSamples=map2TrailCurve.getPoints(240);
-const map2PathHalfWidth=2.5;
+const map2PathHalfWidth=4.0;
 const map2PathVertices=[],map2PathUvs=[],map2PathIndices=[];
 for(let i=0;i<map2PathSamples.length;i++){
  const point=map2PathSamples[i];
@@ -1044,8 +1045,23 @@ map2PathGeometry.setAttribute('position',new THREE.Float32BufferAttribute(map2Pa
 map2PathGeometry.setAttribute('uv',new THREE.Float32BufferAttribute(map2PathUvs,2));
 map2PathGeometry.setIndex(map2PathIndices);
 map2PathGeometry.computeVertexNormals();
-const map2Trail=new THREE.Mesh(map2PathGeometry,new THREE.MeshStandardMaterial({color:0x80664a,roughness:1,side:THREE.DoubleSide}));
-map2Trail.receiveShadow=true;map2Trail.visible=true;map2World.add(map2Trail); // Dirt road enabled only in Map 2.
+const map2Trail=new THREE.Mesh(map2PathGeometry,new THREE.MeshStandardMaterial({color:0xb99a70,roughness:1,side:THREE.DoubleSide}));
+map2Trail.receiveShadow=true;map2Trail.visible=true;map2Trail.renderOrder=5;map2World.add(map2Trail); // Dirt road enabled only in Map 2.
+function refreshMap2TrailOnTerrain(){
+ const positions=map2PathGeometry.getAttribute('position');
+ for(let i=0;i<positions.count;i++){
+  const x=positions.getX(i),z=positions.getZ(i);
+  let y=map2HeightAt(x,z)+.3;
+  if(map2ImportedTerrain){
+   map2TerrainRaycaster.set(new THREE.Vector3(x+MAP2_OFFSET_X,1000,z),new THREE.Vector3(0,-1,0));
+   const hits=map2TerrainRaycaster.intersectObject(map2ImportedTerrain,true);
+   if(hits.length)y=hits[0].point.y+.32;
+  }
+  positions.setY(i,y);
+ }
+ positions.needsUpdate=true;
+ map2PathGeometry.computeVertexNormals();
+}
 
 // Keep the path mesh and player ground height aligned with the terrain.
 function map2SurfaceHeightAt(x,z,referenceY=null){
