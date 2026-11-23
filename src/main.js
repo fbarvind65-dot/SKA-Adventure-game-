@@ -933,9 +933,6 @@ movementInstructionObserver.observe(document.body,{childList:true,subtree:true,c
 /* Map 2: separate wildlands world. Map 1 objects are preserved and toggled, not rebuilt. */
 const map1WorldObjects=scene.children.filter(object=>object!==player&&!object.isLight&&!vehicles.includes(object)&&object!==roadPickup);
 const map2World=new THREE.Group();
-let map2ImportedTerrain=null;
-const map2TerrainRaycaster=new THREE.Raycaster();
-const map2TerrainHeightCache=new Map();
 map2World.name='SKA_MAP_02_WILDLANDS';
 // Map 2 is physically placed east of the city so both environments share one continuous world.
 const MAP2_OFFSET_X=650;
@@ -980,24 +977,12 @@ for(let p=0;p<map2TexturePixels.data.length;p+=4){const grain=Math.random()*42;c
 map2TextureContext.putImageData(map2TexturePixels,0,0);
 const map2GroundTexture=new THREE.CanvasTexture(map2TextureCanvas);map2GroundTexture.wrapS=map2GroundTexture.wrapT=THREE.RepeatWrapping;map2GroundTexture.repeat.set(22,22);map2GroundTexture.colorSpace=THREE.SRGBColorSpace;
 const map2Ground=new THREE.Mesh(map2GroundGeometry,new THREE.MeshStandardMaterial({map:map2GroundTexture,vertexColors:true,roughness:1,side:THREE.DoubleSide}));
-map2Ground.receiveShadow=true;map2Ground.visible=true;map2World.add(map2Ground); // Stable Map 2 foundation; scanned rock surface overlays the center area.
-const dracoLoader=new DRACOLoader();
-dracoLoader.setDecoderPath('https://www.gstatic.com/draco/v1/decoders/');
-const rockySurfaceLoader=new GLTFLoader();
-rockySurfaceLoader.setMesh// Map 2 scanned rocky-surface GLB disabled: its baked surface may include a road/path.
-d mesh's real surface where it exists; retain procedural terrain elsewhere.
- if(map2ImportedTerrain){
-  map2ImportedTerrain.updateMatrixWorld(true);
-  map2TerrainRaycaster.set(new THREE.Vector3(x+MAP2_OFFSET_X,1000,z),new THREE.Vector3(0,-1,0));
-  const hits=map2TerrainRaycaster.intersectObject(map2ImportedTerrain,true);
-  if(hits.length){
-   const surfaceY=hits[0].point.y;
-   if(referenceY===null||Math.abs(surfaceY-referenceY)<18)return surfaceY;
-  }
- }
+map2Ground.receiveShadow=true;map2Ground.visible=true;map2World.add(map2Ground); // Procedural Map 2 ground only.
+// Map 2 uses only its procedural terrain surface; no road or scanned-surface GLB is loaded.
+function map2SurfaceHeightAt(x,z){
  return map2HeightAt(x,z);
 }
-// Previous auto-scattered rock GLB placement disabled for the clean asset-by-asset rebuild.
+// No scanned surface or auto-scattered rock GLB is loaded in Map 2.
 function setWorldMap(mapId){
  const wildlands=mapId==='map2';
  // Both maps remain loaded and visible; the lobby selection only chooses the starting region.
@@ -1356,7 +1341,7 @@ if(pickupLabel.style.display==='block'){const p=roadPickup.position.clone();p.y+
   torso.position.y=THREE.MathUtils.damp(torso.position.y,0,10,dt);
   torso.rotation.x=THREE.MathUtils.damp(torso.rotation.x,0,8,dt);
  }
-   // Keep the character's feet on the Map 2 terrain and raised dirt path.
+   // Keep the character's feet on the Map 2 terrain.
   if(map2World.visible&&!isDriving){
    const worldX=player.position.x;
    let floorHeight=0; // Map 1 and the first part of the connecting road sit at ground level.
