@@ -179,14 +179,33 @@ road(0,0,13,520);
 road(-48,0,9,520); road(48,0,9,520);
 road(0,-58,180,10); road(0,58,180,10);
 for(let z=-245;z<250;z+=12){
- box(scene,.16,.025,5,materials.line,0,.075,z,false);
+ // Paint sits flush on the asphalt instead of floating above it.
+ box(scene,.16,.006,5,materials.line,0,.063,z,false);
 }
 for(const side of [-1,1]){
  box(scene,2.3,.18,520,materials.sidewalk,side*7.65,.12,0,false);
  box(scene,2.3,.18,520,materials.sidewalk,side*10.5,.12,0,false);
  for(let z=-240;z<250;z+=5){
-  box(scene,2.3,.19,.12,materials.concrete,side*7.65,.22,z,false);
+  // Concrete joints are level with the sidewalk, not raised blocker blocks.
+  box(scene,2.3,.15,.12,materials.concrete,side*7.65,.135,z,false);
  }
+}
+
+// Walkable top heights for Map 1's grass, roads, lane paint and sidewalks.
+// The player root is placed on these surfaces so the imported model's feet
+// cannot sink below the road markings or raised pavement.
+function map1SurfaceHeightAt(x,z){
+ let height=-.08; // grass plane
+ if(Math.abs(z)<=260){
+  if(Math.abs(x)<=6.5||Math.abs(x+48)<=4.5||Math.abs(x-48)<=4.5)height=.066;
+ }
+ if(Math.abs(x)<=90&&(Math.abs(z+58)<=5||Math.abs(z-58)<=5))height=Math.max(height,.06);
+ for(const side of [-1,1]){
+  if(Math.abs(x-side*7.65)<=1.15||Math.abs(x-side*10.5)<=1.15){
+   if(Math.abs(z)<=260)height=Math.max(height,.21);
+  }
+ }
+ return height;
 }
 
 // Keep the shared emissive lamp material for vehicle lights.
@@ -1105,8 +1124,10 @@ if(pickupLabel.style.display==='block'){const p=roadPickup.position.clone();p.y+
  if(jumpActive&&!isDriving){
   player.position.y+=jumpVelocity*dt;
   jumpVelocity-=15*dt;
-  const inWildlands=player.position.x>MAP2_OFFSET_X-400;
-  const landingHeight=inWildlands?map2SurfaceHeightAt(player.position.x-MAP2_OFFSET_X,player.position.z):0;
+  const inWildlands=player.position.x>=MAP2_OFFSET_X-400;
+  const landingHeight=inWildlands
+   ?map2SurfaceHeightAt(player.position.x-MAP2_OFFSET_X,player.position.z)
+   :map1SurfaceHeightAt(player.position.x,player.position.z);
   if(player.position.y<=landingHeight){player.position.y=landingHeight;jumpVelocity=0;jumpActive=false;}
  }
  // Clear last frame's prone overlay before the animation mixer advances.
@@ -1256,19 +1277,12 @@ if(pickupLabel.style.display==='block'){const p=roadPickup.position.clone();p.y+
   torso.position.y=THREE.MathUtils.damp(torso.position.y,0,10,dt);
   torso.rotation.x=THREE.MathUtils.damp(torso.rotation.x,0,8,dt);
  }
-   // Keep the character's feet on the Map 2 terrain.
-  if(map2World.visible&&!isDriving){
+   // Keep the character on the actual surface in both maps.
+  if(!isDriving){
    const worldX=player.position.x;
-   let floorHeight=0; // Map 1 and the first part of the connecting road sit at ground level.
-   if(worldX>145){
-    const blend=THREE.MathUtils.smoothstep(worldX,145,250);
-    const roadTerrainY=map2HeightAt(worldX-MAP2_OFFSET_X,0);
-    floorHeight=THREE.MathUtils.lerp(.02,roadTerrainY+.12,blend);
-    if(worldX>=250){
-     const localX=worldX-MAP2_OFFSET_X;
-     floorHeight=map2SurfaceHeightAt(localX,player.position.z,player.position.y);
-    }
-   }
+   const floorHeight=worldX>=MAP2_OFFSET_X-400
+    ?map2SurfaceHeightAt(worldX-MAP2_OFFSET_X,player.position.z,player.position.y)
+    :map1SurfaceHeightAt(worldX,player.position.z);
    if(!jumpActive)player.position.y=floorHeight;
    else if(player.position.y<floorHeight){player.position.y=floorHeight;jumpVelocity=0;jumpActive=false;}
   }
