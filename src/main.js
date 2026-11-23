@@ -97,7 +97,7 @@ scene.add(sun);
 const mat=(color,roughness=0.85,metalness=0)=>new THREE.MeshStandardMaterial({color,roughness,metalness});
 const materials={
  grass:mat(0x637b4d), asphalt:mat(0x30363a), line:mat(0xd8d1b6),
- sidewalk:mat(0x9a9b91), concrete:mat(0xb6ad9b), brick:mat(0xa66e50),
+ brick:mat(0xa66e50),
  plaster:mat(0xd1c5ad), roof:mat(0x514b46), glass: new THREE.MeshStandardMaterial({color:0x668b9c,roughness:.22,metalness:.35}),
  darkGlass:new THREE.MeshStandardMaterial({color:0x253d49,roughness:.18,metalness:.4}),
  bark:mat(0x57402f), leaf:mat(0x405d38), leaf2:mat(0x587247),
@@ -182,13 +182,9 @@ for(let z=-245;z<250;z+=12){
  // Paint sits flush on the asphalt instead of floating above it.
  box(scene,.16,.006,5,materials.line,0,.063,z,false);
 }
-for(const side of [-1,1]){
- box(scene,2.3,.18,520,materials.sidewalk,side*7.65,.12,0,false);
- box(scene,2.3,.18,520,materials.sidewalk,side*10.5,.12,0,false);
- // Removed the repeated concrete road-blocker pieces; keep the sidewalk surface only.
-}
+// Removed raised roadside blocker/sidewalk strips. Keep the road surface and white lane paint.
 
-// Walkable top heights for Map 1's grass, roads, lane paint and sidewalks.
+// Walkable top heights for Map 1's grass, roads and lane paint.
 // The player root is placed on these surfaces so the imported model's feet
 // cannot sink below the road markings or raised pavement.
 function map1SurfaceHeightAt(x,z){
@@ -197,11 +193,6 @@ function map1SurfaceHeightAt(x,z){
   if(Math.abs(x)<=6.5||Math.abs(x+48)<=4.5||Math.abs(x-48)<=4.5)height=.066;
  }
  if(Math.abs(x)<=90&&(Math.abs(z+58)<=5||Math.abs(z-58)<=5))height=Math.max(height,.06);
- for(const side of [-1,1]){
-  if(Math.abs(x-side*7.65)<=1.15||Math.abs(x-side*10.5)<=1.15){
-   if(Math.abs(z)<=260)height=Math.max(height,.21);
-  }
- }
  return height;
 }
 
