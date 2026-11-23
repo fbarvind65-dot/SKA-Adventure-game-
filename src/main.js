@@ -118,49 +118,24 @@ function sphere(parent,r,material,x,y,z,sx=1,sy=1,sz=1){
  m.position.set(x,y,z); m.scale.set(sx,sy,sz); m.castShadow=true; parent.add(m); return m;
 }
 
-// Map 1 terrain is assembled from the uploaded 12 x 12 m lawn patch material.
-// The 600 x 900 m ground is exactly 50 columns x 75 rows and ends at x=250,
-// so these 3,750 tiles cannot cover Map 2 or its river.
+// Map 1 terrain uses the real lawn patch's tileable PBR texture.
+// One continuous 600 x 900 m surface repeats the 12 m texture 50 x 75 times,
+// avoiding visible individual tile borders and keeping the ground lightweight.
 const groundTileSize=12;
 const groundTileColumns=50;
 const groundTileRows=75;
-const groundTileGeometry=new THREE.PlaneGeometry(groundTileSize,groundTileSize);
-groundTileGeometry.rotateX(-Math.PI/2);
-const ground=new THREE.InstancedMesh(
- groundTileGeometry,
- materials.grass,
- groundTileColumns*groundTileRows
+const ground=new THREE.Mesh(
+ new THREE.PlaneGeometry(600,900),
+ materials.grass
 );
-ground.instanceMatrix.setUsage(THREE.StaticDrawUsage);
-const groundTileDummy=new THREE.Object3D();
-const groundTileColor=new THREE.Color();
-let groundTileIndex=0;
-for(let row=0;row<groundTileRows;row++){
- for(let column=0;column<groundTileColumns;column++){
-  const hash=(((column+1)*73856093)^((row+1)*19349663))>>>0;
-  groundTileDummy.position.set(
-   -350+groundTileSize*.5+column*groundTileSize,
-   -.08,
-   -450+groundTileSize*.5+row*groundTileSize
-  );
-  groundTileDummy.rotation.set(0,(hash&3)*(Math.PI*.5),0);
-  groundTileDummy.updateMatrix();
-  ground.setMatrixAt(groundTileIndex,groundTileDummy.matrix);
-  const shade=.96+((hash>>>2)%9)*.01;
-  groundTileColor.setRGB(shade,shade,shade);
-  ground.setColorAt(groundTileIndex,groundTileColor);
-  groundTileIndex++;
- }
-}
-ground.instanceMatrix.needsUpdate=true;
-if(ground.instanceColor)ground.instanceColor.needsUpdate=true;
-ground.computeBoundingBox();
-ground.computeBoundingSphere();
+ground.rotation.x=-Math.PI/2;
+ground.position.set(-50,-.08,0);
 ground.receiveShadow=true;
 scene.add(ground);
 
-// Load the grass surface material from the real GLB once and reuse it across
-// all tiles. Instancing keeps the detailed ground lightweight on mobile.
+// Load the lawn patch's grass material and repeat its color/normal textures
+// at the exact 12 m tile scale over Map 1. Roads and sidewalks are separate
+// meshes above the terrain and remain unchanged.
 const lawnPatchLoader=new GLTFLoader();
 lawnPatchLoader.setMeshoptDecoder(MeshoptDecoder);
 lawnPatchLoader.load(lawnPatchModelUrl,(lawnPatchGltf)=>{
@@ -178,9 +153,18 @@ lawnPatchLoader.load(lawnPatchModelUrl,(lawnPatchGltf)=>{
  }
  const tileMaterial=lawnSurfaceMaterial.clone();
  tileMaterial.side=THREE.DoubleSide;
- const maxAnisotropy=renderer.capabilities.getMaxAnisotropy();
- if(tileMaterial.map)tileMaterial.map.anisotropy=Math.min(maxAnisotropy,8);
- if(tileMaterial.normalMap)tileMaterial.normalMap.anisotropy=Math.min(maxAnisotropy,8);
+ const repeatGrassTexture=(texture)=>{
+  if(!texture)return;
+  texture.wrapS=THREE.RepeatWrapping;
+  texture.wrapT=THREE.RepeatWrapping;
+  texture.repeat.set(groundTileColumns,groundTileRows);
+  texture.anisotropy=Math.min(renderer.capabilities.getMaxAnisotropy(),8);
+  texture.needsUpdate=true;
+ };
+ if(tileMaterial.map)tileMaterial.map=tileMaterial.map.clone();
+ if(tileMaterial.normalMap)tileMaterial.normalMap=tileMaterial.normalMap.clone();
+ repeatGrassTexture(tileMaterial.map);
+ repeatGrassTexture(tileMaterial.normalMap);
  tileMaterial.needsUpdate=true;
  ground.material=tileMaterial;
  lawnPatchGltf.scene.traverse((object)=>{
