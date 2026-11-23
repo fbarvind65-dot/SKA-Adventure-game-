@@ -1120,7 +1120,7 @@ lobbyScreen.querySelector('#ska-lobby-play').addEventListener('click',async()=>{
  scene.background=new THREE.Color(0x9eb8c8);
  lobbyStageBase.visible=false; lobbyStageRing.visible=false;
  vehicles[0].position.copy(lobbyVehicleOriginal);
- player.position.set(150,0,0); // Start on the Map 1–Map 2 connecting road at ground level.
+ player.position.set(activeMap==='map2'?MAP2_OFFSET_X:150,0,0); // Spawn in the selected map; Map 2 starts away from Map 1's road.
  hudRoot.style.display='block'; hud.style.display='block';
  cameraYaw=0;cameraPitch=.24;cameraDistance=8.5;
  updateHudLayout();
