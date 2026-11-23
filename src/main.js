@@ -10,7 +10,6 @@ import sitStandBundleUrl from './Business_Female_02-rigged-animated.glb?url';
 import crouchWalkAnimationUrl from './Walk_-_crouched_forwards.glb?url';
 import punchAnimationUrl from './Punch_-_cross_right_2.glb?url';
 import rockModelUrl from '../assets/rocks/rock_1_montebu (1).glb?url';
-import rockySurfaceUrl from '../assets/rocky_surface_1 (1).glb?url';
 
 const app = document.querySelector('#app');
 document.body.style.cssText = 'margin:0;overflow:hidden;background:#9bb8c7;font-family:Arial,sans-serif;overscroll-behavior:none;touch-action:none';
@@ -985,40 +984,8 @@ map2Ground.receiveShadow=true;map2Ground.visible=true;map2World.add(map2Ground);
 const dracoLoader=new DRACOLoader();
 dracoLoader.setDecoderPath('https://www.gstatic.com/draco/v1/decoders/');
 const rockySurfaceLoader=new GLTFLoader();
-rockySurfaceLoader.setMeshoptDecoder(MeshoptDecoder);
-rockySurfaceLoader.setDRACOLoader(dracoLoader);
-rockySurfaceLoader.load(rockySurfaceUrl,(gltf)=>{
- const rockySurface=gltf.scene;
- rockySurface.updateMatrixWorld(true);
- const sourceBounds=new THREE.Box3().setFromObject(rockySurface);
- const sourceSize=sourceBounds.getSize(new THREE.Vector3());
- const sourceCenter=sourceBounds.getCenter(new THREE.Vector3());
- const horizontalSpan=Math.max(sourceSize.x,sourceSize.z);
- if(!Number.isFinite(horizontalSpan)||horizontalSpan<=0){
-  console.error('Rocky Surface 1 has invalid ground dimensions.');
-  return;
- }
- // Preserve the scan proportions and fit it as a broad, walkable rocky clearing.
- const fitScale=100/horizontalSpan;
- rockySurface.scale.setScalar(fitScale);
- rockySurface.position.set(-sourceCenter.x*fitScale,map2HeightAt(0,0)-sourceBounds.min.y*fitScale,-sourceCenter.z*fitScale);
- rockySurface.traverse(object=>{
-  if(!object.isMesh)return;
-  object.castShadow=true;
-  object.receiveShadow=true;
-  if(object.material){
-   const mats=Array.isArray(object.material)?object.material:[object.material];
-   mats.forEach(material=>{if("roughness" in material)material.roughness=Math.max(material.roughness??0.8,.82);});
-  }
- });
- rockySurface.name='SKA_MAP_02_ROCKY_SURFACE_1';
- map2World.add(rockySurface);
- rockySurface.updateMatrixWorld(true);
- map2ImportedTerrain=rockySurface;
- console.info('Rocky Surface 1 loaded for Map 2.',{sourceSize:sourceSize.toArray(),fitScale});
-},undefined,error=>console.error('Rocky Surface 1 failed to load:',error));
-function map2SurfaceHeightAt(x,z,referenceY=null){
- // Use the scanned mesh's real surface where it exists; retain procedural terrain elsewhere.
+rockySurfaceLoader.setMesh// Map 2 scanned rocky-surface GLB disabled: its baked surface may include a road/path.
+d mesh's real surface where it exists; retain procedural terrain elsewhere.
  if(map2ImportedTerrain){
   map2ImportedTerrain.updateMatrixWorld(true);
   map2TerrainRaycaster.set(new THREE.Vector3(x+MAP2_OFFSET_X,1000,z),new THREE.Vector3(0,-1,0));
