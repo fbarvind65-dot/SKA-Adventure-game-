@@ -118,12 +118,8 @@ function sphere(parent,r,material,x,y,z,sx=1,sy=1,sz=1){
  m.position.set(x,y,z); m.scale.set(sx,sy,sz); m.castShadow=true; parent.add(m); return m;
 }
 
-// Map 1 terrain uses the real lawn patch's tileable PBR texture.
-// One continuous 600 x 900 m surface repeats the 12 m texture 50 x 75 times,
-// avoiding visible individual tile borders and keeping the ground lightweight.
-const groundTileSize=12;
-const groundTileColumns=50;
-const groundTileRows=75;
+// Map 1: keep a plain terrain base, then place the actual GLB lawn mesh
+// as repeated 12 m ground pieces. Do not stretch/repeat its texture on a flat plane.
 const ground=new THREE.Mesh(
  new THREE.PlaneGeometry(600,900),
  materials.grass
@@ -133,45 +129,65 @@ ground.position.set(-50,-.08,0);
 ground.receiveShadow=true;
 scene.add(ground);
 
-// Load the lawn patch's grass material and repeat its color/normal textures
-// at the exact 12 m tile scale over Map 1. Roads and sidewalks are separate
-// meshes above the terrain and remain unchanged.
 const lawnPatchLoader=new GLTFLoader();
 lawnPatchLoader.setMeshoptDecoder(MeshoptDecoder);
 lawnPatchLoader.load(lawnPatchModelUrl,(lawnPatchGltf)=>{
- let lawnSurfaceMaterial=null;
- lawnPatchGltf.scene.traverse((object)=>{
-  if(!object.isMesh||!object.material)return;
-  const candidates=Array.isArray(object.material)?object.material:[object.material];
-  const match=candidates.find(material=>material.name==='Mown lawn grass'&&material.map)
-   ||candidates.find(material=>material.map);
-  if(match)lawnSurfaceMaterial=match;
- });
- if(!lawnSurfaceMaterial){
-  console.warn('Lawn patch GLB loaded, but its textured grass surface was not found.');
+ const source=lawnPatchGltf.scene;
+ source.updateMatrixWorld(true);
+ const sourceBox=new THREE.Box3().setFromObject(source);
+ const sourceSize=sourceBox.getSize(new THREE.Vector3());
+ if(!Number.isFinite(sourceSize.x)||sourceSize.x<.0001||sourceSize.z<.0001){
+  console.error('Lawn GLB has invalid ground dimensions; no tiles placed.');
   return;
  }
- const tileMaterial=lawnSurfaceMaterial.clone();
- tileMaterial.side=THREE.DoubleSide;
- const repeatGrassTexture=(texture)=>{
-  if(!texture)return;
-  texture.wrapS=THREE.RepeatWrapping;
-  texture.wrapT=THREE.RepeatWrapping;
-  texture.repeat.set(groundTileColumns,groundTileRows);
-  texture.anisotropy=Math.min(renderer.capabilities.getMaxAnisotropy(),8);
-  texture.needsUpdate=true;
- };
- if(tileMaterial.map)tileMaterial.map=tileMaterial.map.clone();
- if(tileMaterial.normalMap)tileMaterial.normalMap=tileMaterial.normalMap.clone();
- repeatGrassTexture(tileMaterial.map);
- repeatGrassTexture(tileMaterial.normalMap);
- tileMaterial.needsUpdate=true;
- ground.material=tileMaterial;
- lawnPatchGltf.scene.traverse((object)=>{
-  if(object.isMesh)object.geometry.dispose();
+ const targetTileWidth=12,targetTileDepth=12;
+ const scaleX=targetTileWidth/sourceSize.x;
+ const scaleZ=targetTileDepth/sourceSize.z;
+ const scaleY=(scaleX+scaleZ)*.5;
+ const tileGeometry=[];
+ source.traverse(object=>{
+  if(!object.isMesh||!object.geometry)return;
+  const geometry=object.geometry.clone();
+  geometry.applyMatrix4(object.matrixWorld);
+  geometry.translate(-sourceBox.min.x,-sourceBox.min.y,-sourceBox.min.z);
+  geometry.scale(scaleX,scaleY,scaleZ);
+  tileGeometry.push({geometry,material:object.material});
  });
-},undefined,(error)=>{
- console.error('Lawn patch GLB could not load; the existing grass fallback remains active.',error);
+ if(!tileGeometry.length){
+  console.error('Lawn GLB loaded but contains no renderable mesh.');
+  return;
+ }
+ // Grid exactly covers Map 1's 600 x 900 m ground: 50 x 75 pieces.
+ // Leave road and sidewalk corridors open so the existing road meshes stay clear.
+ const columns=50,rows=75,tile=12;
+ const tileCenters=[];
+ for(let row=0;row<rows;row++){
+  const z=-450+tile/2+row*tile;
+  for(let col=0;col<columns;col++){
+   const x=-350+tile/2+col*tile;
+   const mainRoad=Math.abs(x)<18.5;
+   const sideRoad=Math.abs(x+48)<10.5||Math.abs(x-48)<10.5;
+   const crossRoad=Math.abs(z+58)<11||Math.abs(z-58)<11;
+   if(mainRoad||sideRoad||crossRoad)continue;
+   tileCenters.push(new THREE.Vector3(x,-.075,z));
+  }
+ }
+ for(const part of tileGeometry){
+  const instances=new THREE.InstancedMesh(part.geometry,part.material,tileCenters.length);
+  const matrix=new THREE.Matrix4();
+  tileCenters.forEach((position,index)=>{
+   matrix.makeTranslation(position.x,position.y,position.z);
+   instances.setMatrixAt(index,matrix);
+  });
+  instances.instanceMatrix.needsUpdate=true;
+  instances.castShadow=false;
+  instances.receiveShadow=true;
+  instances.frustumCulled=false;
+  scene.add(instances);
+ }
+ console.info('Map 1 GLB lawn tiles placed:',tileCenters.length,'; source bounds:',sourceSize.x,sourceSize.y,sourceSize.z);
+},undefined,error=>{
+ console.error('Lawn patch GLB could not load; plain ground remains visible.',error);
 });
 
 // Main avenue, sidewalks, lane markings and side streets.
