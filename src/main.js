@@ -1048,55 +1048,11 @@ map2PathGeometry.setAttribute('position',new THREE.Float32BufferAttribute(map2Pa
 map2PathGeometry.setAttribute('uv',new THREE.Float32BufferAttribute(map2PathUvs,2));
 map2PathGeometry.setIndex(map2PathIndices);
 map2PathGeometry.computeVertexNormals();
-const map2Trail=new THREE.Mesh(map2PathGeometry,new THREE.MeshStandardMaterial({color:0xb99a70,roughness:1,side:THREE.DoubleSide}));
+const map2Trail=new THREE.Mesh(map2PathGeometry,new THREE.MeshStandardMaterial({color:0x75634c,roughness:1,side:THREE.DoubleSide}));
 map2Trail.receiveShadow=true;map2Trail.visible=true;map2Trail.renderOrder=5;map2World.add(map2Trail); // Procedural Map 2 fallback path.
 
-// Load the user's real gravel-road GLB. Place repeated road sections along
-// the same Map 2 route; Draco decoding is enabled because this GLB is Draco-compressed.
-const gravelRoadLoader=new GLTFLoader();
-gravelRoadLoader.setMeshoptDecoder(MeshoptDecoder);
-gravelRoadLoader.setDRACOLoader(dracoLoader);
-const gravelRoadAssetUrl=import.meta.env.BASE_URL+'assets/gravel_road_2%20(1).glb';
-// Fit short, controlled road sections to the whole 760-unit Map 2 path.
-// This prevents the source GLB's original large dimensions from creating one
-// oversized flat slab. Map 1 is not modified.
-gravelRoadLoader.load(gravelRoadAssetUrl,(gltf)=>{
- const roadSource=gltf.scene;
- roadSource.updateMatrixWorld(true);
- const bounds=new THREE.Box3().setFromObject(roadSource);
- const size=bounds.getSize(new THREE.Vector3());
- const center=bounds.getCenter(new THREE.Vector3());
- const longAxis=size.x>=size.z?'x':'z';
- const longSize=longAxis==='x'?size.x:size.z;
- const shortSize=longAxis==='x'?size.z:size.x;
- if(!Number.isFinite(longSize)||!Number.isFinite(shortSize)||longSize<=0||shortSize<=0){
-  console.error('Uploaded gravel-road GLB has invalid horizontal dimensions.');return;
- }
- const targetRoadWidth=7.2;
- const targetSectionLength=19.0;
- const roadTiles=new THREE.Group();
- roadTiles.name='SKA_MAP_02_UPLOADED_GRAVEL_ROAD';
- const sectionCount=40;
- for(let n=0;n<sectionCount;n++){
-  const t=(n+.5)/sectionCount;
-  const point=map2TrailCurve.getPointAt(t);
-  const tangent=map2TrailCurve.getTangentAt(t);
-  const angle=Math.atan2(tangent.x,tangent.z);
-  const tile=roadSource.clone(true);
-  const sx=longAxis==='x'?targetSectionLength/longSize:targetRoadWidth/shortSize;
-  const sz=longAxis==='z'?targetSectionLength/longSize:targetRoadWidth/shortSize;
-  tile.scale.set(sx,Math.max(sx,sz),sz);
-  tile.position.set(-center.x*sx,-center.y*Math.max(sx,sz),-center.z*sz);
-  const pivot=new THREE.Group();
-  pivot.add(tile);
-  pivot.rotation.y=angle+(longAxis==='x'?Math.PI/2:0);
-  pivot.position.set(point.x,map2HeightAt(point.x,point.z)+.18,point.z);
-  pivot.traverse(part=>{if(part.isMesh){part.castShadow=true;part.receiveShadow=true;}});
-  roadTiles.add(pivot);
- }
- map2World.add(roadTiles);
- console.info('Map 2 gravel road fitted across the full trail.',{sections:sectionCount,totalLength:760,width:targetRoadWidth});
-},undefined,error=>console.warn('Uploaded gravel-road GLB could not load; full-length ground path remains visible.',error));
+// Uploaded GLB was incorrectly oriented/scaled into upright blocks; disabled.
+// Keep the continuous terrain-following Map 2 road mesh instead.
 function refreshMap2TrailOnTerrain(){
  const positions=map2PathGeometry.getAttribute('position');
  for(let i=0;i<positions.count;i++){
