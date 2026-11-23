@@ -1056,7 +1056,7 @@ map2Trail.receiveShadow=true;map2Trail.visible=true;map2Trail.renderOrder=5;map2
 const gravelRoadLoader=new GLTFLoader();
 gravelRoadLoader.setMeshoptDecoder(MeshoptDecoder);
 gravelRoadLoader.setDRACOLoader(dracoLoader);
-const gravelRoadAssetUrl=import.meta.env.BASE_URL+'assets/gravel_road_2.glb';
+const gravelRoadAssetUrl=import.meta.env.BASE_URL+'assets/gravel_road_2%20(1).glb';
 gravelRoadLoader.load(gravelRoadAssetUrl,(gltf)=>{
  const roadSource=gltf.scene;
  roadSource.updateMatrixWorld(true);
