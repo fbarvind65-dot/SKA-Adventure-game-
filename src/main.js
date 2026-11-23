@@ -140,69 +140,8 @@ for(const side of [-1,1]){
  }
 }
 
-// Town blocks: distinct buildings with real facades, rooflines, windows and doors.
-const windowMat=materials.glass;
-function building(x,z,w,d,h,wall,seed=0){
- const g=new THREE.Group(); g.position.set(x,0,z); scene.add(g);
- box(g,w,h,d,wall,0,h/2,0);
- box(g,w+.35,.28,d+.35,materials.roof,0,h+.12,0);
- // Raised parapet and rooftop service structures break up flat roof silhouettes.
- box(g,w+.12,.42,.18,materials.concrete,0,h+.43,-d/2+.12,false);
- box(g,w+.12,.42,.18,materials.concrete,0,h+.43,d/2-.12,false);
- box(g,.18,.42,d,materials.concrete,-w/2+.12,h+.43,0,false);
- box(g,.18,.42,d,materials.concrete,w/2-.12,h+.43,0,false);
- box(g,1.35,.9,1.15,materials.roof,w*.23,h+.72,-d*.18);
- box(g,1.05,.12,.9,materials.concrete,w*.23,h+1.2,-d*.18,false);
- box(g,w*.94,.18,d*.94,materials.concrete,0,.12,0);
- const floors=Math.max(1,Math.floor((h-1.5)/3.1));
- const cols=Math.max(2,Math.floor(w/2.25));
- for(let f=0;f<floors;f++){
-  for(let c=0;c<cols;c++){
-   const wx=-w/2+(c+.5)*w/cols;
-   const wy=1.65+f*3.05;
-   box(g,.92,1.28,.09,windowMat,wx,wy,d/2+.055,false);
-   box(g,1.02,.09,.13,materials.white,wx,wy-.7,d/2+.08,false);
-   box(g,.08,1.35,.13,materials.white,wx-.51,wy,d/2+.08,false);
-   box(g,.08,1.35,.13,materials.white,wx+.51,wy,d/2+.08,false);
-   // Deep stone sill and lintel add realistic depth to each window.
-   box(g,1.12,.11,.22,materials.concrete,wx,wy-.73,d/2+.12,false);
-   box(g,1.12,.09,.18,materials.concrete,wx,wy+.73,d/2+.10,false);
-   // Selected windows receive small metal balconies.
-   if((c+f+seed)%4===0){
-    box(g,1.25,.12,.72,materials.concrete,wx,wy-.83,d/2+.38,false);
-    const railMat=mat(0x454b4c,.48,.62);
-    box(g,1.2,.055,.055,railMat,wx,wy-.28,d/2+.72,false);
-    for(let post=0;post<5;post++){
-     box(g,.035,.55,.035,railMat,wx-.58+post*.29,wy-.56,d/2+.72,false);
-    }
-   }
-  }
- }
- box(g,1.25,2.25,.12,materials.roof,0,1.15,d/2+.08);
- box(g,.08,2.1,.15,materials.white,-.66,1.15,d/2+.16);
- return g;
-}
-const facades=[0xc7b69b,0xb9b0a0,0xc8c0b1,0xa98c72,0xd0c8b8,0x9faaa6];
-for(let z=-220;z<=220;z+=32){
- for(const side of [-1,1]){
-  const x=side*(18+Math.sin(z*.08)*2);
-  const height=10+((Math.abs(z/32)%3)*3);
-  building(x,z,12,17,height,mat(facades[Math.abs(Math.floor(z/32))%facades.length]));
-  building(side*34,z+9,15,19,8+((Math.abs(z/32)%2)*4),mat(facades[(Math.abs(Math.floor(z/32))+2)%facades.length]));
- }
-}
-
-// Street lamps create scale and depth.
-const lampMetal=mat(0x343a3b,.42,.65);
+// Keep the shared emissive lamp material for vehicle lights.
 const lampGlow=new THREE.MeshStandardMaterial({color:0xffe7b5,emissive:0xffd28a,emissiveIntensity:1.5});
-for(let z=-225;z<230;z+=28){
- for(const side of [-1,1]){
-  const x=side*11.8;
-  cylinder(scene,.09,.12,5.8,lampMetal,x,2.9,z,10);
-  const arm=box(scene,.12,.12,1.25,lampMetal,x-side*.55,5.65,z,false); arm.rotation.y=side*.08;
-  sphere(scene,.19,lampGlow,x-side*1.05,5.55,z,1.35,.55,.65);
- }
-}
 
 // Park strips and distant low hills.
 for(const side of [-1,1]){
