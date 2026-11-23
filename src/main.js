@@ -118,8 +118,8 @@ function sphere(parent,r,material,x,y,z,sx=1,sy=1,sz=1){
  m.position.set(x,y,z); m.scale.set(sx,sy,sz); m.castShadow=true; parent.add(m); return m;
 }
 
-// Map 1: keep a plain terrain base, then place the actual GLB lawn mesh
-// as repeated 12 m ground pieces. Do not stretch/repeat its texture on a flat plane.
+// Map 1 ground: use one optimized plane, not thousands of detailed GLB
+// mesh instances. Instancing the full model caused mobile GPU/render stalls.
 const ground=new THREE.Mesh(
  new THREE.PlaneGeometry(600,900),
  materials.grass
@@ -134,62 +134,41 @@ lawnPatchLoader.setMeshoptDecoder(MeshoptDecoder);
 lawnPatchLoader.load(lawnPatchModelUrl,(lawnPatchGltf)=>{
  const source=lawnPatchGltf.scene;
  source.updateMatrixWorld(true);
- const sourceBox=new THREE.Box3().setFromObject(source);
- const sourceSize=sourceBox.getSize(new THREE.Vector3());
- if(!Number.isFinite(sourceSize.x)||sourceSize.x<.0001||sourceSize.z<.0001){
-  console.error('Lawn GLB has invalid ground dimensions; no tiles placed.');
+ const bounds=new THREE.Box3().setFromObject(source);
+ const size=bounds.getSize(new THREE.Vector3());
+ if(!Number.isFinite(size.x)||size.x<.001||size.z<.001){
+  console.warn('Lawn GLB dimensions invalid; keeping optimized grass fallback.');
   return;
  }
- const targetTileWidth=12,targetTileDepth=12;
- const scaleX=targetTileWidth/sourceSize.x;
- const scaleZ=targetTileDepth/sourceSize.z;
- const scaleY=(scaleX+scaleZ)*.5;
- const tileGeometry=[];
+ let grassMaterial=null;
  source.traverse(object=>{
-  if(!object.isMesh||!object.geometry)return;
-  const geometry=object.geometry.clone();
-  geometry.applyMatrix4(object.matrixWorld);
-  geometry.translate(-sourceBox.min.x,-sourceBox.min.y,-sourceBox.min.z);
-  geometry.scale(scaleX,scaleY,scaleZ);
-  tileGeometry.push({geometry,material:object.material});
+  if(!object.isMesh||!object.material)return;
+  const list=Array.isArray(object.material)?object.material:[object.material];
+  const found=list.find(m=>m.name==='Mown lawn grass'&&m.map)||list.find(m=>m.map);
+  if(found&&!grassMaterial)grassMaterial=found;
  });
- if(!tileGeometry.length){
-  console.error('Lawn GLB loaded but contains no renderable mesh.');
+ if(!grassMaterial?.map){
+  console.warn('Lawn GLB color texture not found; keeping grass fallback.');
   return;
  }
- // Grid exactly covers Map 1's 600 x 900 m ground: 50 x 75 pieces.
- // Leave road and sidewalk corridors open so the existing road meshes stay clear.
- const columns=50,rows=75,tile=12;
- const tileCenters=[];
- for(let row=0;row<rows;row++){
-  const z=-450+tile/2+row*tile;
-  for(let col=0;col<columns;col++){
-   const x=-350+tile/2+col*tile;
-   const mainRoad=Math.abs(x)<18.5;
-   const sideRoad=Math.abs(x+48)<10.5||Math.abs(x-48)<10.5;
-   const crossRoad=Math.abs(z+58)<11||Math.abs(z-58)<11;
-   if(mainRoad||sideRoad||crossRoad)continue;
-   // Geometry is normalized from its minimum corner (0,0,0), so
-   // instance coordinates use each cell's lower-left corner, not center.
-   tileCenters.push(new THREE.Vector3(-350+col*tile,-.075,-450+row*tile));
-  }
- }
- for(const part of tileGeometry){
-  const instances=new THREE.InstancedMesh(part.geometry,part.material,tileCenters.length);
-  const matrix=new THREE.Matrix4();
-  tileCenters.forEach((position,index)=>{
-   matrix.makeTranslation(position.x,position.y,position.z);
-   instances.setMatrixAt(index,matrix);
-  });
-  instances.instanceMatrix.needsUpdate=true;
-  instances.castShadow=false;
-  instances.receiveShadow=true;
-  instances.frustumCulled=false;
-  scene.add(instances);
- }
- console.info('Map 1 GLB lawn tiles placed:',tileCenters.length,'; source bounds:',sourceSize.x,sourceSize.y,sourceSize.z);
+ const material=grassMaterial.clone();
+ material.side=THREE.DoubleSide;
+ material.normalMap=null; // avoid the GLB's expensive, visibly banded normal pattern
+ material.aoMap=null;
+ material.bumpMap=null;
+ const texture=material.map.clone();
+ texture.wrapS=texture.wrapT=THREE.RepeatWrapping;
+ // Repeat the source's actual mesh footprint across the full 600 x 900 m field.
+ texture.repeat.set(600/size.x,900/size.z);
+ texture.anisotropy=Math.min(renderer.capabilities.getMaxAnisotropy(),4);
+ texture.colorSpace=THREE.SRGBColorSpace;
+ texture.needsUpdate=true;
+ material.map=texture;
+ material.needsUpdate=true;
+ ground.material=material;
+ console.info('Optimized lawn material loaded; GLB footprint:',size.x,size.z);
 },undefined,error=>{
- console.error('Lawn patch GLB could not load; plain ground remains visible.',error);
+ console.error('Lawn GLB texture failed; optimized green ground remains.',error);
 });
 
 // Main avenue, sidewalks, lane markings and side streets.
