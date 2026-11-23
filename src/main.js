@@ -1015,61 +1015,8 @@ rockySurfaceLoader.load(rockySurfaceUrl,(gltf)=>{
  map2World.add(rockySurface);
  rockySurface.updateMatrixWorld(true);
  map2ImportedTerrain=rockySurface;
- refreshMap2TrailOnTerrain();
  console.info('Rocky Surface 1 loaded for Map 2.',{sourceSize:sourceSize.toArray(),fitScale});
 },undefined,error=>console.error('Rocky Surface 1 failed to load:',error));
-const map2TrailPoints=[];
-for(let i=0;i<=40;i++){
- const z=380-i*19;
- const x=Math.sin(i*.24)*20-5;
- map2TrailPoints.push(new THREE.Vector3(x,map2HeightAt(x,z),z));
-}
-const map2TrailCurve=new THREE.CatmullRomCurve3(map2TrailPoints);
-const map2PathSamples=map2TrailCurve.getPoints(420);
-const map2PathHalfWidth=4.0;
-const map2PathVertices=[],map2PathUvs=[],map2PathIndices=[];
-for(let i=0;i<map2PathSamples.length;i++){
- const point=map2PathSamples[i];
- const tangent=map2TrailCurve.getTangent(i/(map2PathSamples.length-1));
- const sideX=-tangent.z,sideZ=tangent.x;
- for(const side of [-1,1]){
-  const px=point.x+sideX*map2PathHalfWidth*side;
-  const pz=point.z+sideZ*map2PathHalfWidth*side;
-  map2PathVertices.push(px,map2HeightAt(px,pz)+.035,pz);
-  map2PathUvs.push(i/(map2PathSamples.length-1)*18,(side+1)*.5);
- }
- if(i<map2PathSamples.length-1){
-  const a=i*2,b=a+1,c=a+2,d=a+3;
-  map2PathIndices.push(a,c,b,b,c,d);
- }
-}
-const map2PathGeometry=new THREE.BufferGeometry();
-map2PathGeometry.setAttribute('position',new THREE.Float32BufferAttribute(map2PathVertices,3));
-map2PathGeometry.setAttribute('uv',new THREE.Float32BufferAttribute(map2PathUvs,2));
-map2PathGeometry.setIndex(map2PathIndices);
-map2PathGeometry.computeVertexNormals();
-const map2Trail=new THREE.Mesh(map2PathGeometry,new THREE.MeshStandardMaterial({color:0x75634c,roughness:1,side:THREE.DoubleSide}));
-map2Trail.receiveShadow=true;map2Trail.visible=true;map2Trail.renderOrder=5;map2World.add(map2Trail); // Procedural Map 2 fallback path.
-
-// Uploaded GLB was incorrectly oriented/scaled into upright blocks; disabled.
-// Keep the continuous terrain-following Map 2 road mesh instead.
-function refreshMap2TrailOnTerrain(){
- const positions=map2PathGeometry.getAttribute('position');
- for(let i=0;i<positions.count;i++){
-  const x=positions.getX(i),z=positions.getZ(i);
-  let y=map2HeightAt(x,z)+.3;
-  if(map2ImportedTerrain){
-   map2TerrainRaycaster.set(new THREE.Vector3(x+MAP2_OFFSET_X,1000,z),new THREE.Vector3(0,-1,0));
-   const hits=map2TerrainRaycaster.intersectObject(map2ImportedTerrain,true);
-   if(hits.length)y=hits[0].point.y+.32;
-  }
-  positions.setY(i,y);
- }
- positions.needsUpdate=true;
- map2PathGeometry.computeVertexNormals();
-}
-
-// Keep the path mesh and player ground height aligned with the terrain.
 function map2SurfaceHeightAt(x,z,referenceY=null){
  // Use the scanned mesh's real surface where it exists; retain procedural terrain elsewhere.
  if(map2ImportedTerrain){
