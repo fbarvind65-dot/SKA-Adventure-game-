@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import playerModelUrl from './Business_Female_02.glb?url';
 import idleAnimationUrl from './f_idle_neutral_01.glb?url';
@@ -941,8 +940,8 @@ map2World.visible=true;
 scene.add(map2World);
 
 // River visuals and river-specific animation removed for now.
-// Old combined forest-road GLB intentionally disabled: Map 2 is rebuilt from separate assets.
-// One shared height function drives the terrain mesh, trees, rocks, path and player.
+// No imported road GLB is used in Map 2.
+// One shared height function drives Map 2 terrain and player grounding.
 function map2HeightAt(x,z){
  // Broad ridges and broken rocky slopes, with smaller natural surface variation.
  const distance=Math.hypot(x,z);
