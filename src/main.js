@@ -1045,7 +1045,7 @@ map2PathGeometry.setAttribute('uv',new THREE.Float32BufferAttribute(map2PathUvs,
 map2PathGeometry.setIndex(map2PathIndices);
 map2PathGeometry.computeVertexNormals();
 const map2Trail=new THREE.Mesh(map2PathGeometry,new THREE.MeshStandardMaterial({color:0x80664a,roughness:1,side:THREE.DoubleSide}));
-map2Trail.receiveShadow=true;map2Trail.visible=false;map2World.add(map2Trail); // Map 2 trail kept disabled until road assets are finalized.
+map2Trail.receiveShadow=true;map2Trail.visible=true;map2World.add(map2Trail); // Dirt road enabled only in Map 2.
 
 // Keep the path mesh and player ground height aligned with the terrain.
 function map2SurfaceHeightAt(x,z,referenceY=null){
