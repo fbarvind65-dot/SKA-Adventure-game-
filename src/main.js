@@ -1019,13 +1019,13 @@ rockySurfaceLoader.load(rockySurfaceUrl,(gltf)=>{
  console.info('Rocky Surface 1 loaded for Map 2.',{sourceSize:sourceSize.toArray(),fitScale});
 },undefined,error=>console.error('Rocky Surface 1 failed to load:',error));
 const map2TrailPoints=[];
-for(let i=0;i<=24;i++){
- const z=220-i*18;
+for(let i=0;i<=40;i++){
+ const z=380-i*19;
  const x=Math.sin(i*.24)*20-5;
  map2TrailPoints.push(new THREE.Vector3(x,map2HeightAt(x,z),z));
 }
 const map2TrailCurve=new THREE.CatmullRomCurve3(map2TrailPoints);
-const map2PathSamples=map2TrailCurve.getPoints(240);
+const map2PathSamples=map2TrailCurve.getPoints(420);
 const map2PathHalfWidth=4.0;
 const map2PathVertices=[],map2PathUvs=[],map2PathIndices=[];
 for(let i=0;i<map2PathSamples.length;i++){
@@ -1057,38 +1057,46 @@ const gravelRoadLoader=new GLTFLoader();
 gravelRoadLoader.setMeshoptDecoder(MeshoptDecoder);
 gravelRoadLoader.setDRACOLoader(dracoLoader);
 const gravelRoadAssetUrl=import.meta.env.BASE_URL+'assets/gravel_road_2%20(1).glb';
+// Fit short, controlled road sections to the whole 760-unit Map 2 path.
+// This prevents the source GLB's original large dimensions from creating one
+// oversized flat slab. Map 1 is not modified.
 gravelRoadLoader.load(gravelRoadAssetUrl,(gltf)=>{
  const roadSource=gltf.scene;
  roadSource.updateMatrixWorld(true);
- const roadBounds=new THREE.Box3().setFromObject(roadSource);
- const roadSize=roadBounds.getSize(new THREE.Vector3());
- const roadWidth=Math.min(roadSize.x,roadSize.z);
- const roadLength=Math.max(roadSize.x,roadSize.z);
- if(!Number.isFinite(roadWidth)||roadWidth<=0||roadLength<=0){
-  console.error('Gravel road GLB has invalid dimensions.');return;
+ const bounds=new THREE.Box3().setFromObject(roadSource);
+ const size=bounds.getSize(new THREE.Vector3());
+ const center=bounds.getCenter(new THREE.Vector3());
+ const longAxis=size.x>=size.z?'x':'z';
+ const longSize=longAxis==='x'?size.x:size.z;
+ const shortSize=longAxis==='x'?size.z:size.x;
+ if(!Number.isFinite(longSize)||!Number.isFinite(shortSize)||longSize<=0||shortSize<=0){
+  console.error('Uploaded gravel-road GLB has invalid horizontal dimensions.');return;
  }
- // Normalize model width to 7.5 world units while preserving its proportions.
- const roadScale=7.5/roadWidth;
- const sectionLength=roadLength*roadScale*.92;
- const sectionCount=Math.ceil(432/sectionLength);
+ const targetRoadWidth=7.2;
+ const targetSectionLength=19.0;
  const roadTiles=new THREE.Group();
  roadTiles.name='SKA_MAP_02_UPLOADED_GRAVEL_ROAD';
+ const sectionCount=40;
  for(let n=0;n<sectionCount;n++){
-  const distance=Math.min(432,(n+.5)*sectionLength);
-  const t=distance/432;
+  const t=(n+.5)/sectionCount;
   const point=map2TrailCurve.getPointAt(t);
   const tangent=map2TrailCurve.getTangentAt(t);
+  const angle=Math.atan2(tangent.x,tangent.z);
   const tile=roadSource.clone(true);
-  tile.scale.setScalar(roadScale);
-  tile.rotation.y=Math.atan2(tangent.x,tangent.z);
-  tile.position.set(point.x,map2HeightAt(point.x,point.z)+.12,point.z);
-  tile.traverse(part=>{if(part.isMesh){part.castShadow=true;part.receiveShadow=true;}});
-  roadTiles.add(tile);
+  const sx=longAxis==='x'?targetSectionLength/longSize:targetRoadWidth/shortSize;
+  const sz=longAxis==='z'?targetSectionLength/longSize:targetRoadWidth/shortSize;
+  tile.scale.set(sx,Math.max(sx,sz),sz);
+  tile.position.set(-center.x*sx,-center.y*Math.max(sx,sz),-center.z*sz);
+  const pivot=new THREE.Group();
+  pivot.add(tile);
+  pivot.rotation.y=angle+(longAxis==='x'?Math.PI/2:0);
+  pivot.position.set(point.x,map2HeightAt(point.x,point.z)+.18,point.z);
+  pivot.traverse(part=>{if(part.isMesh){part.castShadow=true;part.receiveShadow=true;}});
+  roadTiles.add(pivot);
  }
  map2World.add(roadTiles);
- roadTiles.visible=true;
- console.info('Uploaded gravel road loaded in Map 2.',{sections:sectionCount,roadWidth,roadLength,roadScale});
-},undefined,error=>console.warn('Gravel road GLB not found/failed; procedural Map 2 road remains visible. Upload it to public/assets/gravel_road_2.glb.',error));
+ console.info('Map 2 gravel road fitted across the full trail.',{sections:sectionCount,totalLength:760,width:targetRoadWidth});
+},undefined,error=>console.warn('Uploaded gravel-road GLB could not load; full-length ground path remains visible.',error));
 function refreshMap2TrailOnTerrain(){
  const positions=map2PathGeometry.getAttribute('position');
  for(let i=0;i<positions.count;i++){
