@@ -982,8 +982,11 @@ map2TextureContext.putImageData(map2TexturePixels,0,0);
 const map2GroundTexture=new THREE.CanvasTexture(map2TextureCanvas);map2GroundTexture.wrapS=map2GroundTexture.wrapT=THREE.RepeatWrapping;map2GroundTexture.repeat.set(22,22);map2GroundTexture.colorSpace=THREE.SRGBColorSpace;
 const map2Ground=new THREE.Mesh(map2GroundGeometry,new THREE.MeshStandardMaterial({map:map2GroundTexture,vertexColors:true,roughness:1,side:THREE.DoubleSide}));
 map2Ground.receiveShadow=true;map2Ground.visible=true;map2World.add(map2Ground); // Stable Map 2 foundation; scanned rock surface overlays the center area.
+const dracoLoader=new DRACOLoader();
+dracoLoader.setDecoderPath('https://www.gstatic.com/draco/v1/decoders/');
 const rockySurfaceLoader=new GLTFLoader();
 rockySurfaceLoader.setMeshoptDecoder(MeshoptDecoder);
+rockySurfaceLoader.setDRACOLoader(dracoLoader);
 rockySurfaceLoader.load(rockySurfaceUrl,(gltf)=>{
  const rockySurface=gltf.scene;
  rockySurface.updateMatrixWorld(true);
@@ -1046,7 +1049,45 @@ map2PathGeometry.setAttribute('uv',new THREE.Float32BufferAttribute(map2PathUvs,
 map2PathGeometry.setIndex(map2PathIndices);
 map2PathGeometry.computeVertexNormals();
 const map2Trail=new THREE.Mesh(map2PathGeometry,new THREE.MeshStandardMaterial({color:0xb99a70,roughness:1,side:THREE.DoubleSide}));
-map2Trail.receiveShadow=true;map2Trail.visible=true;map2Trail.renderOrder=5;map2World.add(map2Trail); // Dirt road enabled only in Map 2.
+map2Trail.receiveShadow=true;map2Trail.visible=true;map2Trail.renderOrder=5;map2World.add(map2Trail); // Procedural Map 2 fallback path.
+
+// Load the user's real gravel-road GLB. Place repeated road sections along
+// the same Map 2 route; Draco decoding is enabled because this GLB is Draco-compressed.
+const gravelRoadLoader=new GLTFLoader();
+gravelRoadLoader.setMeshoptDecoder(MeshoptDecoder);
+gravelRoadLoader.setDRACOLoader(dracoLoader);
+gravelRoadLoader.load('/assets/gravel_road_2.glb',(gltf)=>{
+ const roadSource=gltf.scene;
+ roadSource.updateMatrixWorld(true);
+ const roadBounds=new THREE.Box3().setFromObject(roadSource);
+ const roadSize=roadBounds.getSize(new THREE.Vector3());
+ const roadWidth=Math.min(roadSize.x,roadSize.z);
+ const roadLength=Math.max(roadSize.x,roadSize.z);
+ if(!Number.isFinite(roadWidth)||roadWidth<=0||roadLength<=0){
+  console.error('Gravel road GLB has invalid dimensions.');return;
+ }
+ // Normalize model width to 7.5 world units while preserving its proportions.
+ const roadScale=7.5/roadWidth;
+ const sectionLength=roadLength*roadScale*.92;
+ const sectionCount=Math.ceil(432/sectionLength);
+ const roadTiles=new THREE.Group();
+ roadTiles.name='SKA_MAP_02_UPLOADED_GRAVEL_ROAD';
+ for(let n=0;n<sectionCount;n++){
+  const distance=Math.min(432,(n+.5)*sectionLength);
+  const t=distance/432;
+  const point=map2TrailCurve.getPointAt(t);
+  const tangent=map2TrailCurve.getTangentAt(t);
+  const tile=roadSource.clone(true);
+  tile.scale.setScalar(roadScale);
+  tile.rotation.y=Math.atan2(tangent.x,tangent.z);
+  tile.position.set(point.x,map2HeightAt(point.x,point.z)+.12,point.z);
+  tile.traverse(part=>{if(part.isMesh){part.castShadow=true;part.receiveShadow=true;}});
+  roadTiles.add(tile);
+ }
+ map2World.add(roadTiles);
+ roadTiles.visible=true;
+ console.info('Uploaded gravel road loaded in Map 2.',{sections:sectionCount,roadWidth,roadLength,roadScale});
+},undefined,error=>console.warn('Gravel road GLB not found/failed; procedural Map 2 road remains visible. Upload it to public/assets/gravel_road_2.glb.',error));
 function refreshMap2TrailOnTerrain(){
  const positions=map2PathGeometry.getAttribute('position');
  for(let i=0;i<positions.count;i++){
