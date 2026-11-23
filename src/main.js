@@ -185,10 +185,7 @@ for(let z=-245;z<250;z+=12){
 for(const side of [-1,1]){
  box(scene,2.3,.18,520,materials.sidewalk,side*7.65,.12,0,false);
  box(scene,2.3,.18,520,materials.sidewalk,side*10.5,.12,0,false);
- for(let z=-240;z<250;z+=5){
-  // Concrete joints are level with the sidewalk, not raised blocker blocks.
-  box(scene,2.3,.15,.12,materials.concrete,side*7.65,.135,z,false);
- }
+ // Removed the repeated concrete road-blocker pieces; keep the sidewalk surface only.
 }
 
 // Walkable top heights for Map 1's grass, roads, lane paint and sidewalks.
