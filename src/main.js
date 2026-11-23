@@ -169,7 +169,9 @@ lawnPatchLoader.load(lawnPatchModelUrl,(lawnPatchGltf)=>{
    const sideRoad=Math.abs(x+48)<10.5||Math.abs(x-48)<10.5;
    const crossRoad=Math.abs(z+58)<11||Math.abs(z-58)<11;
    if(mainRoad||sideRoad||crossRoad)continue;
-   tileCenters.push(new THREE.Vector3(x,-.075,z));
+   // Geometry is normalized from its minimum corner (0,0,0), so
+   // instance coordinates use each cell's lower-left corner, not center.
+   tileCenters.push(new THREE.Vector3(-350+col*tile,-.075,-450+row*tile));
   }
  }
  for(const part of tileGeometry){
